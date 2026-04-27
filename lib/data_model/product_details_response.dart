@@ -68,11 +68,11 @@ class DetailedProduct {
       this.link,
       this.brand});
 
-  int? id;
+  dynamic id;
   String? name;
   String? added_by;
-  int? seller_id;
-  int? shop_id;
+  dynamic seller_id;
+  dynamic shop_id;
   String? shop_name;
   String? shop_logo;
   List<Photo> photos;
@@ -177,7 +177,7 @@ class Brand {
     this.logo,
   });
 
-  int? id;
+  dynamic id;
   String? name;
   String? logo;
 

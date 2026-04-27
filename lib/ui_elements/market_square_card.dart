@@ -12,39 +12,48 @@ class MarketSquareCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = MyTheme.isDark(context);
-    final accentColor = MyTheme.primary(context);
+    
+    // Vibrant 'Earth, Gold, and Fire' consistent palette
+    final earthyColors = [
+      MyTheme.market_amber,
+      MyTheme.secondary_color,
+      MyTheme.market_red,
+      MyTheme.teal_accent,
+      MyTheme.accent_brown,
+    ];
+    final color = earthyColors[market.marketName.length % earthyColors.length];
     final surfaceColor = MyTheme.surface(context);
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20.0),
+          borderRadius: BorderRadius.circular(12.0),
           color: surfaceColor,
           border: Border.all(
-            color: MyTheme.border(context).withOpacity(0.5),
+            color: color.withOpacity(isDark ? 0.4 : 0.2),
             width: 1.0,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(isDark ? 0.3 : 0.06),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
+              color: color.withOpacity(isDark ? 0.15 : 0.05),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
             ),
           ],
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(20.0),
+          borderRadius: BorderRadius.circular(12.0),
           child: Stack(
             children: [
-              // Decorative background gradient/pattern
+              // Decorative background gradient
               Positioned.fill(
                 child: Container(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
-                        accentColor.withOpacity(0.08),
-                        Colors.transparent,
+                        color.withOpacity(0.12),
+                        color.withOpacity(0.01),
                       ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
@@ -54,66 +63,73 @@ class MarketSquareCard extends StatelessWidget {
               ),
               // Brand silhouette overlay
               Positioned(
-                right: -15,
-                top: -15,
+                right: -10,
+                top: -10,
                 child: Opacity(
-                  opacity: 0.12,
+                  opacity: 0.08,
                   child: Icon(
                     Icons.storefront_outlined,
-                    size: 90,
-                    color: accentColor,
+                    size: 70,
+                    color: color,
                   ),
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Container(
-                      width: 44,
-                      height: 44,
+                      width: 36,
+                      height: 36,
                       decoration: BoxDecoration(
-                        color: accentColor.withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(14),
+                        color: color.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(10),
                       ),
                       child: Center(
                         child: Icon(
                           Icons.storefront_rounded,
-                          color: accentColor,
-                          size: 22,
+                          color: color,
+                          size: 18,
                         ),
                       ),
                     ),
-                    const Spacer(),
-                    Text(
-                      market.marketName,
-                      style: TextStyle(
-                        color: MyTheme.primaryText(context),
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.4,
-                        height: 1.2,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
                     const SizedBox(height: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            market.marketName,
+                            style: TextStyle(
+                              color: MyTheme.primaryText(context),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -0.3,
+                              height: 1.2,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 4),
                     Row(
                       children: [
                         Text(
                           'Enter Market',
                           style: TextStyle(
-                            color: accentColor,
-                            fontSize: 12,
+                            color: color,
+                            fontSize: 11,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                         const SizedBox(width: 4),
                         Icon(
                           Icons.arrow_forward_rounded,
-                          color: accentColor,
-                          size: 14,
+                          color: color,
+                          size: 12,
                         ),
                       ],
                     ),

@@ -43,6 +43,8 @@ class Shop {
     this.user_id,
     this.name,
     this.logo,
+    this.banner,
+    this.tagline,
     required this.sliders,
     this.address,
     this.facebook,
@@ -50,12 +52,16 @@ class Shop {
     this.twitter,
     this.true_rating,
     this.rating,
+    this.reviewCount,
+    this.metadata,
   });
 
-  int? id;
+  dynamic id;
   int? user_id;
   String? name;
   String? logo;
+  String? banner;
+  String? tagline;
   List<String> sliders;
   String? address;
   String? facebook;
@@ -63,12 +69,16 @@ class Shop {
   String? twitter;
   int? true_rating;
   int? rating;
+  int? reviewCount;
+  Map<String, dynamic>? metadata;
 
   factory Shop.fromJson(Map<String, dynamic> json) => Shop(
         id: json["id"],
         user_id: json["user_id"],
         name: json["name"],
         logo: json["logo"],
+        banner: json["banner"],
+        tagline: json["tagline"],
         sliders: (json["sliders"] == null)
             ? []
             : List<String>.from(json["sliders"].map((x) => x)),
@@ -78,6 +88,8 @@ class Shop {
         twitter: json["twitter"] == null ? null : json["twitter"],
         true_rating: json["true_rating"],
         rating: json["rating"],
+        reviewCount: json["review_count"],
+        metadata: json["metadata"],
       );
 
   Map<String, dynamic> toJson() => {
@@ -85,6 +97,8 @@ class Shop {
         "user_id": user_id,
         "name": name,
         "logo": logo,
+        "banner": banner,
+        "tagline": tagline,
         "sliders": List<dynamic>.from(sliders.map((x) => x)),
         "address": address,
         "facebook": facebook,
@@ -92,5 +106,7 @@ class Shop {
         "twitter": twitter,
         "true_rating": true_rating,
         "rating": rating,
+        "review_count": reviewCount,
+        "metadata": metadata,
       };
 }

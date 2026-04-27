@@ -9,7 +9,7 @@ import 'package:afriomarkets_cust_app/l10n/app_localizations.dart';
 class SellerProducts extends StatefulWidget {
   SellerProducts({Key? key, required this.id, required this.shop_name})
       : super(key: key);
-  final int id;
+  final dynamic id;
   final String shop_name;
 
   @override
@@ -85,10 +85,11 @@ class _SellerProductsState extends State<SellerProducts> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = MyTheme.isDark(context);
     return Directionality(
       textDirection: app_language_rtl.$ ? TextDirection.rtl : TextDirection.ltr,
       child: Scaffold(
-          backgroundColor: Colors.white,
+          backgroundColor: MyTheme.background(context),
           appBar: buildAppBar(context),
           body: Stack(
             children: [
@@ -103,72 +104,58 @@ class _SellerProductsState extends State<SellerProducts> {
 
   Container buildLoadingContainer() {
     return Container(
-      height: _showLoadingContainer ? 36 : 0,
+      height: _showLoadingContainer ? 40 : 0,
       width: double.infinity,
-      color: Colors.white,
+      color: MyTheme.surface(context),
       child: Center(
-        child: Text(_totalData == _productList.length
-            ? AppLocalizations.of(context)!.common_no_more_products
-            : AppLocalizations.of(context)!.common_loading_more_products),
+        child: Text(
+          _totalData == _productList.length
+              ? AppLocalizations.of(context)!.common_no_more_products
+              : AppLocalizations.of(context)!.common_loading_more_products,
+          style: TextStyle(color: MyTheme.secondaryText(context), fontSize: 12, fontWeight: FontWeight.w600),
+        ),
       ),
     );
   }
 
   AppBar buildAppBar(BuildContext context) {
+    final isDark = MyTheme.isDark(context);
     return AppBar(
-      backgroundColor: Colors.white,
-      leading: Builder(
-        builder: (context) => IconButton(
-          icon: Icon(Icons.arrow_back, color: MyTheme.dark_grey),
-          onPressed: () => Navigator.of(context).pop(),
+      backgroundColor: isDark ? Colors.transparent : MyTheme.accent_color,
+      flexibleSpace: Container(
+        decoration: BoxDecoration(
+          gradient: isDark ? MyTheme.appBarGradientDark : MyTheme.appBarGradient,
         ),
       ),
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+        onPressed: () => Navigator.of(context).pop(),
+      ),
       title: Container(
-          width: 250,
-          child: TextField(
-            controller: _searchController,
-            onTap: () {},
-            onChanged: (txt) {
-              /*_searchKey = txt;
-              reset();
-              fetchData();*/
-            },
-            onSubmitted: (txt) {
-              _searchKey = txt;
-              reset();
-              fetchData();
-            },
-            autofocus: true,
-            decoration: InputDecoration(
-                hintText:
-                    "${AppLocalizations.of(context)!.seller_products_screen_search_products_of_shop} : " +
-                        widget.shop_name,
-                hintStyle:
-                    TextStyle(fontSize: 14.0, color: MyTheme.textfield_grey),
-                enabledBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: MyTheme.white, width: 0.0),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: MyTheme.white, width: 0.0),
-                ),
-                contentPadding: EdgeInsets.all(0.0)),
-          )),
+        height: 40,
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.15),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: TextField(
+          controller: _searchController,
+          onSubmitted: (txt) {
+            _searchKey = txt;
+            reset();
+            fetchData();
+          },
+          style: const TextStyle(color: Colors.white, fontSize: 14),
+          decoration: InputDecoration(
+              hintText: AppLocalizations.of(context)!.seller_products_screen_search_products_of_shop.split(':')[0],
+              hintStyle: TextStyle(fontSize: 13.0, color: Colors.white.withOpacity(0.6)),
+              border: InputBorder.none,
+              prefixIcon: const Icon(Icons.search, color: Colors.white70, size: 18),
+              contentPadding: const EdgeInsets.symmetric(vertical: 10)),
+        ),
+      ),
       elevation: 0.0,
       titleSpacing: 0,
-      actions: <Widget>[
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 0.0, horizontal: 0.0),
-          child: IconButton(
-            icon: Icon(Icons.search, color: MyTheme.dark_grey),
-            onPressed: () {
-              _searchKey = _searchController.text.toString();
-              setState(() {});
-              reset();
-              fetchData();
-            },
-          ),
-        ),
-      ],
+      actions: const [SizedBox(width: 16)],
     );
   }
 
@@ -180,7 +167,7 @@ class _SellerProductsState extends State<SellerProducts> {
     } else if (_productList.length > 0) {
       return RefreshIndicator(
         color: MyTheme.accent_color,
-        backgroundColor: Colors.white,
+        backgroundColor: MyTheme.surface(context),
         displacement: 0,
         onRefresh: _onRefresh,
         child: SingleChildScrollView(
@@ -188,20 +175,17 @@ class _SellerProductsState extends State<SellerProducts> {
           physics: const BouncingScrollPhysics(
               parent: AlwaysScrollableScrollPhysics()),
           child: GridView.builder(
-            // 2
-            //addAutomaticKeepAlives: true,
             itemCount: _productList.length,
             controller: _scrollController,
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
-                crossAxisSpacing: 10,
-                mainAxisSpacing: 10,
-                childAspectRatio: 0.618),
-            padding: EdgeInsets.all(16),
-            physics: NeverScrollableScrollPhysics(),
+                crossAxisSpacing: 16,
+                mainAxisSpacing: 16,
+                childAspectRatio: 0.72),
+            padding: const EdgeInsets.all(16),
+            physics: const NeverScrollableScrollPhysics(),
             shrinkWrap: true,
             itemBuilder: (context, index) {
-              // 3
               return ProductCard(
                 id: _productList[index].id,
                 image: _productList[index].thumbnail_image,
@@ -216,9 +200,12 @@ class _SellerProductsState extends State<SellerProducts> {
       );
     } else if (_totalData == 0) {
       return Center(
-          child: Text(AppLocalizations.of(context)!.common_no_data_available));
+          child: Text(
+            AppLocalizations.of(context)!.common_no_data_available,
+            style: TextStyle(color: MyTheme.secondaryText(context)),
+          ));
     } else {
-      return Container(); // should never be happening
+      return Container();
     }
   }
 }

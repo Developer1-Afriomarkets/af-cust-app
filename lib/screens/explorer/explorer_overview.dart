@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart' hide Slider;
 import 'package:afriomarkets_cust_app/data_model/explorer_context.dart';
+import 'package:afriomarkets_cust_app/services/region_service.dart';
 import 'package:afriomarkets_cust_app/repositories/explorer_repository.dart';
 import 'package:afriomarkets_cust_app/repositories/sliders_repository.dart';
 import 'package:afriomarkets_cust_app/repositories/category_repository.dart';
 import 'package:afriomarkets_cust_app/ui_elements/state_square_card.dart';
 import 'package:afriomarkets_cust_app/ui_elements/market_square_card.dart';
-import 'package:afriomarkets_cust_app/ui_elements/store_square_card.dart';
+import 'package:afriomarkets_cust_app/ui_elements/store_card.dart';
 import 'package:afriomarkets_cust_app/ui_elements/product_card.dart';
 import 'package:afriomarkets_cust_app/screens/seller_details.dart';
 import 'package:shimmer/shimmer.dart';
@@ -90,7 +91,7 @@ class _ExplorerOverviewState extends State<ExplorerOverview> {
         physics: const NeverScrollableScrollPhysics(),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 2,
-          childAspectRatio: 0.9,
+          childAspectRatio: 0.7, // More vertical space for StoreCard
           crossAxisSpacing: 16,
           mainAxisSpacing: 16,
         ),
@@ -118,45 +119,41 @@ class _ExplorerOverviewState extends State<ExplorerOverview> {
     // If at Market level
     if (widget.explorerContext.isAtMarketLevel) {
       return SliverToBoxAdapter(
-        child: FutureBuilder(
-          future: _repository.getStoresByMarket(widget.explorerContext.selectedMarket!.id),
-          builder: (context, AsyncSnapshot<List<dynamic>> snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) return _showAllContextEntities ? _buildLoadingGrid() : const SizedBox(height: 180, child: Center(child: CircularProgressIndicator()));
-            if (!snapshot.hasData || snapshot.data!.isEmpty) return const SizedBox(height: 100, child: Center(child: Text("No stores.")));
-            
-            if (!_showAllContextEntities) {
-               return SizedBox(
-                 height: 180,
-                 child: ListView.separated(
-                   scrollDirection: Axis.horizontal,
-                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                   itemCount: snapshot.data!.length,
-                   separatorBuilder: (context, index) => const SizedBox(width: 14),
-                   itemBuilder: (context, index) => SizedBox(
-                     width: 140,
-                     child: StoreSquareCard(
-                       store: snapshot.data![index],
-                       onTapOverride: () => widget.onContextChanged(widget.explorerContext.withStore(snapshot.data![index])),
-                     ),
-                   )
-                 ),
-               );
-            }
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSectionHeader("Stores in ${widget.explorerContext.selectedMarket?.marketName}", 
+                onViewAll: () => setState(() => _showAllContextEntities = !_showAllContextEntities),
+                isExpanded: _showAllContextEntities),
+            const SizedBox(height: 16),
+            FutureBuilder(
+              future: _repository.getStoresByMarket(widget.explorerContext.selectedMarket!.id),
+              builder: (context, AsyncSnapshot<List<dynamic>> snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) return _showAllContextEntities ? _buildLoadingGrid() : const SizedBox(height: 180, child: Center(child: CircularProgressIndicator()));
+                if (!snapshot.hasData || snapshot.data!.isEmpty) return const SizedBox(height: 100, child: Center(child: Text("No stores found in this market.")));
+                
+                if (!_showAllContextEntities) {
+                   return _buildStoreHorizontalList(snapshot.data!);
+                }
 
-            return GridView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2, childAspectRatio: 0.9, crossAxisSpacing: 16, mainAxisSpacing: 16,
-              ),
-              itemCount: snapshot.data!.length,
-              itemBuilder: (context, index) => StoreSquareCard(
-                store: snapshot.data![index],
-                onTapOverride: () => widget.onContextChanged(widget.explorerContext.withStore(snapshot.data![index])),
-              ),
-            );
-          },
+                return GridView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2, 
+                    childAspectRatio: 0.65, 
+                    crossAxisSpacing: 16, 
+                    mainAxisSpacing: 16,
+                  ),
+                  itemCount: snapshot.data!.length,
+                  itemBuilder: (context, index) => StoreCard(
+                    store: snapshot.data![index],
+                  ),
+                );
+              },
+            ),
+          ],
         ),
       );
     }
@@ -164,90 +161,131 @@ class _ExplorerOverviewState extends State<ExplorerOverview> {
     // If at State level
     if (widget.explorerContext.isAtStateLevel) {
       return SliverToBoxAdapter(
-        child: FutureBuilder(
-          future: _repository.getMarketsByState(widget.explorerContext.selectedState!.id),
-          builder: (context, AsyncSnapshot<List<dynamic>> snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) return _showAllContextEntities ? _buildLoadingGrid() : const SizedBox(height: 180, child: Center(child: CircularProgressIndicator()));
-            if (!snapshot.hasData || snapshot.data!.isEmpty) return const SizedBox(height: 100, child: Center(child: Text("No markets.")));
-            
-            if (!_showAllContextEntities) {
-               return SizedBox(
-                 height: 180,
-                 child: ListView.separated(
-                   scrollDirection: Axis.horizontal,
-                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                   itemCount: snapshot.data!.length,
-                   separatorBuilder: (context, index) => const SizedBox(width: 14),
-                   itemBuilder: (context, index) => SizedBox(
-                     width: 150,
-                     child: MarketSquareCard(
-                       market: snapshot.data![index],
-                       onTap: () => widget.onContextChanged(widget.explorerContext.withMarket(snapshot.data![index])),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSectionHeader("Markets in ${widget.explorerContext.selectedState?.stateName}", 
+                onViewAll: () => setState(() => _showAllContextEntities = !_showAllContextEntities),
+                isExpanded: _showAllContextEntities),
+            const SizedBox(height: 16),
+            FutureBuilder(
+              future: _repository.getMarketsByState(widget.explorerContext.selectedState!.id),
+              builder: (context, AsyncSnapshot<List<dynamic>> snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) return _showAllContextEntities ? _buildLoadingGrid() : const SizedBox(height: 180, child: Center(child: CircularProgressIndicator()));
+                if (!snapshot.hasData || snapshot.data!.isEmpty) return const SizedBox(height: 100, child: Center(child: Text("No markets found in this state.")));
+                
+                if (!_showAllContextEntities) {
+                   return SizedBox(
+                     height: 180,
+                     child: ListView.separated(
+                       scrollDirection: Axis.horizontal,
+                       padding: const EdgeInsets.symmetric(horizontal: 16),
+                       itemCount: snapshot.data!.length,
+                       separatorBuilder: (context, index) => const SizedBox(width: 14),
+                       itemBuilder: (context, index) => SizedBox(
+                         width: 150,
+                         child: MarketSquareCard(
+                           market: snapshot.data![index],
+                           onTap: () => widget.onContextChanged(widget.explorerContext.withMarket(snapshot.data![index])),
+                         ),
+                       )
                      ),
-                   )
-                 ),
-               );
-            }
+                   );
+                }
 
-            return GridView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2, childAspectRatio: 0.9, crossAxisSpacing: 16, mainAxisSpacing: 16,
-              ),
-              itemCount: snapshot.data!.length,
-              itemBuilder: (context, index) => MarketSquareCard(
-                market: snapshot.data![index],
-                onTap: () => widget.onContextChanged(widget.explorerContext.withMarket(snapshot.data![index])),
-              ),
-            );
-          },
+                return GridView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2, childAspectRatio: 0.9, crossAxisSpacing: 16, mainAxisSpacing: 16,
+                  ),
+                  itemCount: snapshot.data!.length,
+                  itemBuilder: (context, index) => MarketSquareCard(
+                    market: snapshot.data![index],
+                    onTap: () => widget.onContextChanged(widget.explorerContext.withMarket(snapshot.data![index])),
+                  ),
+                );
+              },
+            ),
+          ],
         ),
       );
     }
 
     // If at Region level (States)
     return SliverToBoxAdapter(
-      child: FutureBuilder(
-        future: _repository.getStates(),
-        builder: (context, AsyncSnapshot<List<dynamic>> snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) return _showAllContextEntities ? _buildLoadingGrid() : const SizedBox(height: 180, child: Center(child: CircularProgressIndicator()));
-          if (!snapshot.hasData || snapshot.data!.isEmpty) return const SizedBox(height: 100, child: Center(child: Text("No states.")));
-          
-          if (!_showAllContextEntities) {
-             return SizedBox(
-               height: 180, // StateCards usually fit nicely here
-               child: ListView.separated(
-                 scrollDirection: Axis.horizontal,
-                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                 itemCount: snapshot.data!.length,
-                 separatorBuilder: (context, index) => const SizedBox(width: 14),
-                 itemBuilder: (context, index) => SizedBox(
-                   width: 140,
-                   child: StateSquareCard(
-                     stateModel: snapshot.data![index],
-                     onTap: () => widget.onContextChanged(widget.explorerContext.withState(snapshot.data![index])),
-                   ),
-                 )
-               ),
-             );
-          }
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionHeader("Explore States", 
+              onViewAll: () => setState(() => _showAllContextEntities = !_showAllContextEntities),
+              isExpanded: _showAllContextEntities),
+          const SizedBox(height: 16),
+          FutureBuilder(
+            future: _repository.getStates(),
+            builder: (context, AsyncSnapshot<List<dynamic>> snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) return _showAllContextEntities ? _buildLoadingGrid() : const SizedBox(height: 180, child: Center(child: CircularProgressIndicator()));
+              if (!snapshot.hasData || snapshot.data!.isEmpty) return const SizedBox(height: 100, child: Center(child: Text("No states available.")));
+              
+              return SizedBox(
+                height: 180,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: snapshot.data!.length,
+                  separatorBuilder: (context, index) => const SizedBox(width: 14),
+                  itemBuilder: (context, index) => SizedBox(
+                    width: 140,
+                    child: StateSquareCard(
+                      stateModel: snapshot.data![index],
+                      onTap: () => widget.onContextChanged(widget.explorerContext.withState(snapshot.data![index])),
+                    ),
+                  )
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 32),
+          _buildSectionHeader("Featured Stores"),
+          const SizedBox(height: 16),
+          FutureBuilder(
+            future: _repository.getAllStores(regionId: RegionService.currentRegionSync?.id),
+            builder: (context, AsyncSnapshot<List<dynamic>> snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) return const SizedBox(height: 180, child: Center(child: CircularProgressIndicator()));
+              if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                 // Fallback to fetch any stores if regional one is empty
+                 return FutureBuilder(
+                   future: _repository.getAllStores(),
+                   builder: (context, AsyncSnapshot<List<dynamic>> fallbackSnapshot) {
+                      if (fallbackSnapshot.connectionState == ConnectionState.waiting) return const SizedBox(height: 180, child: Center(child: CircularProgressIndicator()));
+                      if (!fallbackSnapshot.hasData || fallbackSnapshot.data!.isEmpty) return const SizedBox(height: 100, child: Center(child: Text("No stores found.")));
+                      return _buildStoreHorizontalList(fallbackSnapshot.data!);
+                   },
+                 );
+              }
+              return _buildStoreHorizontalList(snapshot.data!);
+            },
+          ),
+        ],
+      ),
+    );
+  }
 
-          return GridView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2, childAspectRatio: 0.9, crossAxisSpacing: 16, mainAxisSpacing: 16,
-            ),
-            itemCount: snapshot.data!.length,
-            itemBuilder: (context, index) => StateSquareCard(
-              stateModel: snapshot.data![index],
-              onTap: () => widget.onContextChanged(widget.explorerContext.withState(snapshot.data![index])),
-            ),
-          );
-        },
+  Widget _buildStoreHorizontalList(List<dynamic> stores) {
+    return SizedBox(
+      height: 280, // Increased to 280 to prevent RenderFlex overflows
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: stores.length,
+        separatorBuilder: (context, index) => const SizedBox(width: 14),
+        itemBuilder: (context, index) => SizedBox(
+          width: 220,
+          child: StoreCard(
+            store: stores[index],
+          ),
+        )
       ),
     );
   }
@@ -284,17 +322,17 @@ class _ExplorerOverviewState extends State<ExplorerOverview> {
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       height: 200,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: accentColor.withOpacity(isDark ? 0.4 : 0.2),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
+            color: accentColor.withOpacity(isDark ? 0.4 : 0.15),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(16),
         child: Stack(
           children: [
             // Background Image/Gradient
@@ -306,12 +344,12 @@ class _ExplorerOverviewState extends State<ExplorerOverview> {
                     placeholder: (context, url) => Container(color: accentColor),
                   )
                 : Container(
-                    decoration: BoxDecoration(
+                    decoration: const BoxDecoration(
                       gradient: MyTheme.heroGradient,
                     ),
                   ),
             ),
-            // Glassmorphism Overlay
+            // Fire/Gold Gradient Overlay
             Positioned.fill(
               child: Container(
                 decoration: BoxDecoration(
@@ -319,8 +357,8 @@ class _ExplorerOverviewState extends State<ExplorerOverview> {
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                      Colors.black.withOpacity(0.1),
-                      Colors.black.withOpacity(0.6),
+                      Colors.black.withOpacity(0.05),
+                      MyTheme.accent_brown.withOpacity(0.7),
                     ],
                   ),
                 ),
@@ -331,52 +369,52 @@ class _ExplorerOverviewState extends State<ExplorerOverview> {
               child: CustomPaint(
                 painter: AfricanSilhouettePainter(
                   baseColor: MyTheme.golden,
-                  opacity: 0.2,
+                  opacity: 0.15,
                 ),
               ),
             ),
             // Content
             Padding(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                     decoration: BoxDecoration(
-                      color: MyTheme.golden.withOpacity(0.9),
-                      borderRadius: BorderRadius.circular(8),
+                      color: MyTheme.secondary_color,
+                      borderRadius: BorderRadius.circular(6),
                     ),
-                    child: Text(
+                    child: const Text(
                       "LIVE EXPLORER",
                       style: TextStyle(
-                        color: Colors.black,
-                        fontSize: 10,
+                        color: Colors.white,
+                        fontSize: 9,
                         fontWeight: FontWeight.w900,
-                        letterSpacing: 1.2,
+                        letterSpacing: 1.0,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
                   Text(
                     title,
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 24,
+                      fontSize: 22,
                       fontWeight: FontWeight.w800,
-                      letterSpacing: -0.5,
+                      letterSpacing: -0.4,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
                   Text(
                     subtitle,
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.85),
-                      fontSize: 13,
-                      height: 1.4,
+                      color: Colors.white.withOpacity(0.9),
+                      fontSize: 12,
+                      height: 1.3,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -384,19 +422,19 @@ class _ExplorerOverviewState extends State<ExplorerOverview> {
                 ],
               ),
             ),
-            // Pulsing "Learn More" Circle
+            // CTA Circle
             Positioned(
               right: 16,
               bottom: 16,
               child: Container(
-                width: 48,
-                height: 48,
+                width: 44,
+                height: 44,
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
+                  color: MyTheme.golden.withOpacity(0.25),
                   shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white.withOpacity(0.3)),
+                  border: Border.all(color: MyTheme.golden.withOpacity(0.4)),
                 ),
-                child: const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 24),
+                child: const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 22),
               ),
             ),
           ],
@@ -438,55 +476,95 @@ class _ExplorerOverviewState extends State<ExplorerOverview> {
 
   Widget _buildStatChip(String label, String value, IconData icon, Color color) {
     final isDark = MyTheme.isDark(context);
+    
     return Container(
       width: 140,
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 4), // space for shadow
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         color: MyTheme.surface(context),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: MyTheme.border(context).withOpacity(0.5)),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: color.withOpacity(isDark ? 0.3 : 0.15),
+          width: 1.0,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.2 : 0.04),
+            color: color.withOpacity(isDark ? 0.1 : 0.04),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
+      child: Stack(
         children: [
-          Row(
-            children: [
-               Container(
-                 padding: const EdgeInsets.all(4),
-                 decoration: BoxDecoration(
-                   color: color.withOpacity(0.1),
-                   borderRadius: BorderRadius.circular(6),
-                 ),
-                 child: Icon(icon, size: 14, color: color),
-               ),
-               const SizedBox(width: 8),
-               Expanded(
-                 child: Text(
-                   label,
-                   style: TextStyle(color: MyTheme.secondaryText(context), fontSize: 11, fontWeight: FontWeight.w600),
-                   maxLines: 1,
-                   overflow: TextOverflow.ellipsis,
-                 ),
-               ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: TextStyle(
-              fontWeight: FontWeight.w800,
-              fontSize: 18,
-              color: MyTheme.primaryText(context),
-              letterSpacing: -0.5,
+          // Tiny background accent
+          Positioned(
+            right: -10,
+            top: -10,
+            child: Opacity(
+              opacity: 0.05,
+              child: Icon(icon, size: 60, color: color),
             ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: color.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(icon, size: 14, color: color),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      label.toUpperCase(),
+                      style: TextStyle(
+                        color: MyTheme.secondaryText(context),
+                        fontSize: 9,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.5,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  Flexible(
+                    child: Text(
+                      value,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 20,
+                        color: MyTheme.primaryText(context),
+                        letterSpacing: -0.6,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  // MOCK Trend indicator
+                  Icon(
+                    Icons.trending_up_rounded,
+                    size: 12,
+                    color: MyTheme.market_green.withOpacity(0.7),
+                  ),
+                ],
+              ),
+            ],
           ),
         ],
       ),
@@ -555,7 +633,7 @@ class _ExplorerOverviewState extends State<ExplorerOverview> {
                  padding: const EdgeInsets.all(20),
                  decoration: BoxDecoration(
                    color: MyTheme.surface(context),
-                   borderRadius: BorderRadius.circular(20.0),
+                   borderRadius: BorderRadius.circular(14.0),
                    border: Border.all(color: MyTheme.border(context).withOpacity(0.5)),
                    boxShadow: [
                      BoxShadow(
@@ -618,13 +696,13 @@ class _ExplorerOverviewState extends State<ExplorerOverview> {
                   margin: const EdgeInsets.only(right: 20),
                   decoration: BoxDecoration(
                     color: MyTheme.surface(context),
-                    borderRadius: BorderRadius.circular(24),
+                    borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(color: MyTheme.isDark(context) ? Colors.black54 : Colors.black.withOpacity(0.08), blurRadius: 15, offset: const Offset(0, 8))
                     ]
                   ),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(24),
+                    borderRadius: BorderRadius.circular(16),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -676,12 +754,12 @@ class _ExplorerOverviewState extends State<ExplorerOverview> {
       child: FutureBuilder(
         future: _repository.getProductsByContext(widget.explorerContext),
         builder: (context, AsyncSnapshot<dynamic> snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) return _showAllTopProducts ? _buildLoadingGrid() : const SizedBox(height: 240, child: Center(child: CircularProgressIndicator()));
+          if (snapshot.connectionState == ConnectionState.waiting) return _showAllTopProducts ? _buildLoadingGrid() : const SizedBox(height: 260, child: Center(child: CircularProgressIndicator()));
           if (!snapshot.hasData || snapshot.data!.products.isEmpty) return const SizedBox(height: 100, child: Center(child: Text("No products.")));
 
           if (!_showAllTopProducts) {
              return SizedBox(
-               height: 240,
+               height: 280, // Safe height for StoreCard
                child: ListView.separated(
                  scrollDirection: Axis.horizontal,
                  padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -710,7 +788,7 @@ class _ExplorerOverviewState extends State<ExplorerOverview> {
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2, childAspectRatio: 0.72, crossAxisSpacing: 16, mainAxisSpacing: 16,
+              crossAxisCount: 2, childAspectRatio: 0.65, crossAxisSpacing: 16, mainAxisSpacing: 16,
             ),
             itemCount: snapshot.data!.products.length,
             itemBuilder: (context, index) {
@@ -748,23 +826,6 @@ class _ExplorerOverviewState extends State<ExplorerOverview> {
           SliverToBoxAdapter(child: _buildContextualHeroBanner()),
           const SliverToBoxAdapter(child: SizedBox(height: 24)),
 
-          // Legacy Global Sliders & Categories (Hidden per request)
-          /*
-          if (!_isCarouselInitial && _carouselSliderList.isNotEmpty)
-            SliverToBoxAdapter(child: _buildHeroBanner()),
-          if (!_isCarouselInitial && _carouselSliderList.isNotEmpty)
-            const SliverToBoxAdapter(child: SizedBox(height: 24)),
-          
-          if (!_isCategoryInitial && _categoryList.isNotEmpty)
-            SliverToBoxAdapter(child: _buildSectionHeader("Categories")),
-          if (!_isCategoryInitial && _categoryList.isNotEmpty)
-            SliverToBoxAdapter(child: const SizedBox(height: 12)),
-          if (!_isCategoryInitial && _categoryList.isNotEmpty)
-            SliverToBoxAdapter(child: _buildCategoryChips()),
-          if (!_isCategoryInitial && _categoryList.isNotEmpty)
-            const SliverToBoxAdapter(child: SizedBox(height: 24)),
-          */
-
           // ─── Phase 7 Contextual Slivers ───
           SliverToBoxAdapter(
             child: _buildSectionHeader(
@@ -775,12 +836,6 @@ class _ExplorerOverviewState extends State<ExplorerOverview> {
           SliverToBoxAdapter(child: _buildAnalyticsSliver()),
           const SliverToBoxAdapter(child: SizedBox(height: 24)),
 
-          SliverToBoxAdapter(child: _buildSectionHeader(
-              entityHeaderTitle,
-              onViewAll: () => setState(() => _showAllContextEntities = !_showAllContextEntities),
-              isExpanded: _showAllContextEntities
-          )),
-          SliverToBoxAdapter(child: const SizedBox(height: 4)),
           _buildEntitiesSliver(),
 
           const SliverToBoxAdapter(child: SizedBox(height: 12)),

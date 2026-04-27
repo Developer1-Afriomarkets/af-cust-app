@@ -1,4 +1,5 @@
 import 'package:afriomarkets_cust_app/screens/seller_products.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:afriomarkets_cust_app/my_theme.dart';
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
@@ -14,7 +15,7 @@ import 'package:afriomarkets_cust_app/helpers/shared_value_helper.dart';
 import 'package:afriomarkets_cust_app/l10n/app_localizations.dart';
 
 class SellerDetails extends StatefulWidget {
-  final int id;
+  final dynamic id;
 
   SellerDetails({Key? key, required this.id}) : super(key: key);
 
@@ -22,9 +23,9 @@ class SellerDetails extends StatefulWidget {
   _SellerDetailsState createState() => _SellerDetailsState();
 }
 
-class _SellerDetailsState extends State<SellerDetails> {
+class _SellerDetailsState extends State<SellerDetails> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
   ScrollController _mainScrollController = ScrollController();
-  ScrollController _scrollController = ScrollController();
 
   //init
   int _current_slider = 0;
@@ -41,12 +42,19 @@ class _SellerDetailsState extends State<SellerDetails> {
 
   @override
   void initState() {
+    _tabController = TabController(length: 3, vsync: this);
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) {
+        setState(() {});
+      }
+    });
     fetchAll();
     super.initState();
   }
 
   @override
   void dispose() {
+    _tabController.dispose();
     super.dispose();
   }
 
@@ -60,7 +68,6 @@ class _SellerDetailsState extends State<SellerDetails> {
   fetchProductDetails() async {
     var shopDetailsResponse = await ShopRepository().getShopInfo(id: widget.id);
 
-    //print('ss:' + shopDetailsResponse.toString());
     if (shopDetailsResponse.shops.isNotEmpty) {
       _shopDetails = shopDetailsResponse.shops[0];
     }
@@ -89,6 +96,7 @@ class _SellerDetailsState extends State<SellerDetails> {
         await ShopRepository().getTopFromThisSellerProducts(id: widget.id);
     _topProducts.addAll(topProductResponse.products);
     _topProductInit = true;
+    setState(() {});
   }
 
   fetchFeaturedProducts() async {
@@ -96,6 +104,7 @@ class _SellerDetailsState extends State<SellerDetails> {
         await ShopRepository().getfeaturedFromThisSellerProducts(id: widget.id);
     _featuredProducts.addAll(featuredProductResponse.products);
     _featuredProductInit = true;
+    setState(() {});
   }
 
   reset() {
@@ -118,552 +127,381 @@ class _SellerDetailsState extends State<SellerDetails> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = MyTheme.isDark(context);
+    
     return Directionality(
       textDirection: app_language_rtl.$ ? TextDirection.rtl : TextDirection.ltr,
       child: Scaffold(
-          backgroundColor: Colors.white,
-          appBar: buildAppBar(context),
-          bottomNavigationBar: buildBottomAppBar(context),
-          body: RefreshIndicator(
-            color: MyTheme.accent_color,
-            backgroundColor: Colors.white,
-            onRefresh: _onPageRefresh,
-            child: CustomScrollView(
-              controller: _mainScrollController,
-              physics: const BouncingScrollPhysics(
-                  parent: AlwaysScrollableScrollPhysics()),
-              slivers: [
-                SliverList(
-                  delegate: SliverChildListDelegate([
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(
-                        16.0,
-                        16.0,
-                        16.0,
-                        0.0,
-                      ),
-                      child: buildCarouselSlider(context),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(
-                        16.0,
-                        16.0,
-                        16.0,
-                        0.0,
-                      ),
-                      child: Text(
-                        AppLocalizations.of(context)!
-                            .seller_details_screen_new_arrivals,
-                        style: TextStyle(
-                            color: MyTheme.font_grey,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(
-                        8.0,
-                        16.0,
-                        0.0,
-                        0.0,
-                      ),
-                      child: buildNewArrivalList(),
-                    )
-                  ]),
-                ),
-                SliverList(
-                  delegate: SliverChildListDelegate([
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(
-                        16.0,
-                        16.0,
-                        16.0,
-                        0.0,
-                      ),
-                      child: Text(
-                        AppLocalizations.of(context)!
-                            .seller_details_screen_no_top_selling_products,
-                        style: TextStyle(
-                            color: MyTheme.font_grey,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(
-                        16.0,
-                        16.0,
-                        16.0,
-                        0.0,
-                      ),
-                      child: buildTopSellingProductList(),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(
-                        16.0,
-                        16.0,
-                        16.0,
-                        0.0,
-                      ),
-                      child: Text(
-                        AppLocalizations.of(context)!
-                            .seller_details_screen_featured_products,
-                        style: TextStyle(
-                            color: MyTheme.font_grey,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                    Padding(
-                        padding: const EdgeInsets.fromLTRB(
-                          16.0,
-                          16.0,
-                          16.0,
-                          0.0,
-                        ),
-                        child: buildfeaturedProductList())
-                  ]),
-                )
-              ],
-            ),
-          )),
-    );
-  }
-
-  buildfeaturedProductList() {
-    if (_featuredProductInit == false && _featuredProducts.length == 0) {
-      return SingleChildScrollView(
-          child: ShimmerHelper()
-              .buildProductGridShimmer(scontroller: _scrollController));
-    } else if (_featuredProducts.length > 0) {
-      return GridView.builder(
-        // 2
-        //addAutomaticKeepAlives: true,
-        itemCount: _featuredProducts.length,
-        //controller: _scrollController,
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            crossAxisSpacing: 10,
-            mainAxisSpacing: 10,
-            childAspectRatio: 0.618),
-        physics: NeverScrollableScrollPhysics(),
-        shrinkWrap: true,
-        itemBuilder: (context, index) {
-          // 3
-          return ProductCard(
-              id: _featuredProducts[index].id,
-              image: _featuredProducts[index].thumbnail_image,
-              name: _featuredProducts[index].name,
-              main_price: _featuredProducts[index].main_price,
-              stroked_price: _featuredProducts[index].stroked_price,
-              has_discount: _featuredProducts[index].has_discount);
-        },
-      );
-    } else {
-      return Container(
-          height: 100,
-          child: Center(
-              child: Text(
-                  AppLocalizations.of(context)!
-                      .seller_details_screen_no_featured_porducts,
-                  style: TextStyle(color: MyTheme.font_grey))));
-    }
-  }
-
-  buildCarouselSlider(context) {
-    if (_shopDetails == null) {
-      return ShimmerHelper().buildBasicShimmer(
-        height: 190.0,
-      );
-    } else if (_carouselImageList.length > 0) {
-      return CarouselSlider(
-        options: CarouselOptions(
-            aspectRatio: 3.2,
-            viewportFraction: 1,
-            initialPage: 0,
-            enableInfiniteScroll: true,
-            reverse: false,
-            autoPlay: true,
-            autoPlayInterval: Duration(seconds: 5),
-            autoPlayAnimationDuration: Duration(milliseconds: 1000),
-            autoPlayCurve: Curves.easeInCubic,
-            enlargeCenterPage: true,
-            scrollDirection: Axis.horizontal,
-            onPageChanged: (index, reason) {
-              setState(() {
-                _current_slider = index;
-              });
-            }),
-        items: _carouselImageList.map((i) {
-          return Builder(
-            builder: (BuildContext context) {
-              return Stack(
-                children: <Widget>[
-                  Container(
-                      width: double.infinity,
-                      margin: EdgeInsets.symmetric(horizontal: 5.0),
-                      child: ClipRRect(
-                          borderRadius: BorderRadius.all(Radius.circular(8)),
-                          child: (() {
-                            String? imageUrl = PathHelper.getImageUrl(i);
-                            return imageUrl != null
-                                ? FadeInImage.assetNetwork(
-                                    placeholder: 'assets/placeholder_rectangle.png',
-                                    image: imageUrl,
-                                    fit: BoxFit.fill,
-                                  )
-                                : Image.asset(
-                                    'assets/placeholder_rectangle.png',
-                                    fit: BoxFit.fill,
-                                  );
-                          })())),
-                  Align(
-                    alignment: Alignment.bottomCenter,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: _carouselImageList.map((url) {
-                        int index = _carouselImageList.indexOf(url);
-                        return Container(
-                          width: 7.0,
-                          height: 7.0,
-                          margin: EdgeInsets.symmetric(
-                              vertical: 10.0, horizontal: 4.0),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: _current_slider == index
-                                ? MyTheme.white
-                                : Color.fromRGBO(112, 112, 112, .3),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                ],
-              );
-            },
-          );
-        }).toList(),
-      );
-    } else {
-      return Container();
-    }
-  }
-
-  BottomAppBar buildBottomAppBar(BuildContext context) {
-    return BottomAppBar(
-      child: Container(
-        color: Colors.transparent,
-        height: 50,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            _shopDetails != null
-                ? buildShowProductsButton(context)
-                : Container()
-          ],
-        ),
-      ),
-    );
-  }
-
-  buildShowProductsButton(BuildContext context) {
-    return TextButton(
-      style: TextButton.styleFrom(
-        minimumSize: Size(MediaQuery.of(context).size.width, 50),
-        backgroundColor: MyTheme.accent_color,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(0.0),
-        ),
-      ),
-      child: Text(
-        AppLocalizations.of(context)!
-            .seller_details_screen_btn_view_all_products,
-        style: TextStyle(
-            color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
-      ),
-      onPressed: () {
-        Navigator.push(context, MaterialPageRoute(builder: (context) {
-          return SellerProducts(
-            id: _shopDetails.id,
-            shop_name: _shopDetails.name,
-          );
-        }));
-      },
-    );
-  }
-
-  buildTopSellingProductList() {
-    if (_topProductInit == false && _topProducts.length == 0) {
-      return Column(
-        children: [
-          Padding(
-              padding: const EdgeInsets.only(top: 8.0),
-              child: ShimmerHelper().buildBasicShimmer(
-                height: 75.0,
-              )),
-          Padding(
-              padding: const EdgeInsets.only(top: 8.0),
-              child: ShimmerHelper().buildBasicShimmer(
-                height: 75.0,
-              )),
-          Padding(
-              padding: const EdgeInsets.only(top: 8.0),
-              child: ShimmerHelper().buildBasicShimmer(
-                height: 75.0,
-              )),
-        ],
-      );
-    } else if (_topProducts.length > 0) {
-      return SingleChildScrollView(
-        child: ListView.builder(
-          itemCount: _topProducts.length,
-          scrollDirection: Axis.vertical,
-          physics: NeverScrollableScrollPhysics(),
-          shrinkWrap: true,
-          itemBuilder: (context, index) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 3.0),
-              child: ListProductCard(
-                  id: _topProducts[index].id,
-                  image: _topProducts[index].thumbnail_image,
-                  name: _topProducts[index].name,
-                  main_price: _topProducts[index].main_price,
-                  stroked_price: _topProducts[index].stroked_price,
-                  has_discount: _topProducts[index].has_discount),
-            );
-          },
-        ),
-      );
-    } else {
-      return Container(
-          height: 100,
-          child: Center(
-              child: Text(
-                  AppLocalizations.of(context)!
-                      .seller_details_screen_no_top_selling_products,
-                  style: TextStyle(color: MyTheme.font_grey))));
-    }
-  }
-
-  buildNewArrivalList() {
-    if (_newArrivalProductInit == false && _newArrivalProducts.length == 0) {
-      return Row(
-        children: [
-          Padding(
-              padding: const EdgeInsets.only(right: 8.0),
-              child: ShimmerHelper().buildBasicShimmer(
-                  height: 120.0,
-                  width: (MediaQuery.of(context).size.width - 32) / 3)),
-          Padding(
-              padding: const EdgeInsets.only(right: 8.0),
-              child: ShimmerHelper().buildBasicShimmer(
-                  height: 120.0,
-                  width: (MediaQuery.of(context).size.width - 32) / 3)),
-          Padding(
-              padding: const EdgeInsets.only(right: 0.0),
-              child: ShimmerHelper().buildBasicShimmer(
-                  height: 120.0,
-                  width: (MediaQuery.of(context).size.width - 32) / 3)),
-        ],
-      );
-    } else if (_newArrivalProducts.length > 0) {
-      return SingleChildScrollView(
-        child: SizedBox(
-          height: 175,
-          child: ListView.builder(
-            itemCount: _newArrivalProducts.length,
-            scrollDirection: Axis.horizontal,
-            itemExtent: 120,
-            itemBuilder: (context, index) {
-              return Padding(
-                padding: const EdgeInsets.only(right: 3.0),
-                child: MiniProductCard(
-                  id: _newArrivalProducts[index].id,
-                  image: _newArrivalProducts[index].thumbnail_image,
-                  name: _newArrivalProducts[index].name,
-                  main_price: _newArrivalProducts[index].main_price,
-                  stroked_price: _newArrivalProducts[index].stroked_price,
-                  has_discount: _newArrivalProducts[index].has_discount,
-                ),
-              );
-            },
-          ),
-        ),
-      );
-    } else {
-      return Container(
-          height: 100,
-          child: Center(
-              child: Text(
-            AppLocalizations.of(context)!.seller_details_screen_no_new_arrival,
-            style: TextStyle(color: MyTheme.font_grey),
-          )));
-    }
-  }
-
-  AppBar buildAppBar(BuildContext context) {
-    return AppBar(
-      backgroundColor: Colors.white,
-      toolbarHeight: 75,
-      leading: Builder(
-        builder: (context) => IconButton(
-          icon: Icon(Icons.arrow_back, color: MyTheme.dark_grey),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-      ),
-      title: Container(
-        child: Container(
-            width: 350,
-            child: _shopDetails != null
-                ? buildAppbarShopDetails()
-                : Row(
+        backgroundColor: MyTheme.background(context),
+        body: RefreshIndicator(
+          color: MyTheme.accent_color,
+          backgroundColor: MyTheme.surface(context),
+          onRefresh: _onPageRefresh,
+          child: CustomScrollView(
+            controller: _mainScrollController,
+            physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+            slivers: [
+              // 1. Immersive Header
+              SliverAppBar(
+                expandedHeight: 320,
+                pinned: true,
+                elevation: 0,
+                backgroundColor: isDark ? MyTheme.accent_brown : MyTheme.accent_color,
+                flexibleSpace: FlexibleSpaceBar(
+                  background: Stack(
+                    fit: StackFit.expand,
                     children: [
-                      ShimmerHelper()
-                          .buildBasicShimmer(height: 60.0, width: 60.0),
+                      // Banner Background
+                      _shopDetails != null && _carouselImageList.isNotEmpty && PathHelper.getImageUrl(_carouselImageList[0]) != null
+                          ? CachedNetworkImage(
+                              imageUrl: PathHelper.getImageUrl(_carouselImageList[0])!,
+                              fit: BoxFit.cover,
+                              errorWidget: (c, u, e) => Container(decoration: const BoxDecoration(gradient: MyTheme.heroGradient)),
+                            )
+                          : Container(decoration: const BoxDecoration(gradient: MyTheme.heroGradient)),
+                      
+                      // Soft Gradient Overlay
+                      Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.black.withOpacity(0.1),
+                              Colors.black.withOpacity(0.8),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      // Store Info Content
                       Padding(
-                        padding: const EdgeInsets.only(left: 8.0),
+                        padding: const EdgeInsets.all(24.0),
                         child: Column(
+                          mainAxisAlignment: MainAxisAlignment.end,
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            ShimmerHelper()
-                                .buildBasicShimmer(height: 25.0, width: 150.0),
-                            Padding(
-                              padding: const EdgeInsets.only(top: 8.0),
-                              child: ShimmerHelper().buildBasicShimmer(
-                                  height: 20.0, width: 100.0),
+                            Row(
+                              children: [
+                                // Logo
+                                Container(
+                                  width: 70,
+                                  height: 70,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(color: MyTheme.golden, width: 2),
+                                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 10)],
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(14),
+                                    child: _shopDetails != null && PathHelper.getImageUrl(_shopDetails.logo) != null
+                                        ? CachedNetworkImage(
+                                            imageUrl: PathHelper.getImageUrl(_shopDetails.logo)!,
+                                            fit: BoxFit.cover,
+                                          )
+                                        : ShimmerHelper().buildBasicShimmer(),
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                // Text Info
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        _shopDetails?.name ?? "Loading...",
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 24,
+                                          fontWeight: FontWeight.w900,
+                                          letterSpacing: -0.5,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        _shopDetails?.tagline ?? "Authentic Artisanal Marketplace",
+                                        style: TextStyle(
+                                          color: Colors.white.withOpacity(0.8),
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Row(
+                                        children: [
+                                          Icon(Icons.verified_rounded, color: MyTheme.teal_accent, size: 14),
+                                          const SizedBox(width: 4),
+                                          const Text(
+                                            "Verified Store",
+                                            style: TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 0.5),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Icon(Icons.star_rounded, color: MyTheme.golden, size: 14),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            "${_shopDetails?.rating ?? '4.8'}",
+                                            style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
-                      )
+                      ),
                     ],
-                  )),
-      ),
-      elevation: 0.0,
-      titleSpacing: 0,
-      actions: <Widget>[
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 0.0, horizontal: 0.0),
-          child: IconButton(
-            icon: Icon(Icons.location_on, color: MyTheme.dark_grey),
-            onPressed: () {
-              showDialog(
-                  context: context,
-                  builder: (_) => Directionality(
-                        textDirection: app_language_rtl.$
-                            ? TextDirection.rtl
-                            : TextDirection.ltr,
-                        child: AlertDialog(
-                          contentPadding: EdgeInsets.only(
-                              top: 16.0, left: 2.0, right: 2.0, bottom: 2.0),
-                          content: Padding(
-                            padding: const EdgeInsets.symmetric(
-                                vertical: 8.0, horizontal: 16.0),
-                            child: Text(
-                              _shopDetails.address,
-                              maxLines: 3,
-                              style: TextStyle(
-                                  color: MyTheme.font_grey, fontSize: 14),
-                            ),
-                          ),
-                          actions: [
-                            TextButton(
-                              child: Text(
-                                AppLocalizations.of(context)!
-                                    .common_close_in_all_capital,
-                                style: TextStyle(color: MyTheme.medium_grey),
-                              ),
-                              onPressed: () {
-                                Navigator.of(context, rootNavigator: true)
-                                    .pop();
-                              },
-                            ),
-                          ],
-                        ),
-                      ));
-            },
+                  ),
+                ),
+                leading: IconButton(
+                  icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+                  onPressed: () => Navigator.pop(context),
+                ),
+                actions: [
+                  IconButton(
+                    icon: const Icon(Icons.share_outlined, color: Colors.white),
+                    onPressed: () {},
+                  ),
+                ],
+              ),
+
+              // 2. Tab Bar Section
+              SliverPersistentHeader(
+                pinned: true,
+                delegate: _SliverAppBarDelegate(
+                  TabBar(
+                    controller: _tabController,
+                    indicatorColor: MyTheme.accent_color,
+                    indicatorSize: TabBarIndicatorSize.label,
+                    labelColor: MyTheme.primaryText(context),
+                    unselectedLabelColor: MyTheme.secondaryText(context),
+                    labelStyle: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 0.5),
+                    tabs: const [
+                      Tab(text: "OVERVIEW"),
+                      Tab(text: "PRODUCTS"),
+                      Tab(text: "REVIEWS"),
+                    ],
+                  ),
+                  color: MyTheme.surface(context),
+                ),
+              ),
+
+              // 3. Main Content
+              SliverPadding(
+                padding: const EdgeInsets.only(top: 24),
+                sliver: SliverToBoxAdapter(
+                  child: [
+                    _buildOverviewTab(),
+                    _buildProductsTab(),
+                    _buildReviewsTab(),
+                  ][_tabController.index > 2 ? 0 : _tabController.index],
+                ),
+              ),
+
+              const SliverToBoxAdapter(child: SizedBox(height: 100)),
+            ],
           ),
         ),
-      ],
+        bottomNavigationBar: _shopDetails != null ? _buildModernBottomBar() : null,
+      ),
     );
   }
 
-  buildAppbarShopDetails() {
-    return Row(mainAxisAlignment: MainAxisAlignment.start, children: <Widget>[
-      Container(
-        width: 60,
-        height: 60,
-        margin: EdgeInsets.symmetric(vertical: 4.0, horizontal: 2.0),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(5),
-          border:
-              Border.all(color: Color.fromRGBO(112, 112, 112, .3), width: .5),
-          //shape: BoxShape.rectangle,
-        ),
-        child: ClipRRect(
-            borderRadius: BorderRadius.circular(5),
-            child: (() {
-              String? imageUrl = PathHelper.getImageUrl(_shopDetails.logo);
-              return imageUrl != null
-                  ? FadeInImage.assetNetwork(
-                      placeholder: 'assets/placeholder.png',
-                      image: imageUrl,
-                      fit: BoxFit.cover,
-                    )
-                  : Image.asset(
-                      'assets/placeholder.png',
-                      fit: BoxFit.cover,
-                    );
-            })()),
-      ),
-      Container(
-        width: 220,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: EdgeInsets.fromLTRB(8, 8, 8, 0),
-              child: Text(
-                _shopDetails.name,
-                overflow: TextOverflow.ellipsis,
-                maxLines: 2,
-                style: TextStyle(
-                    color: MyTheme.font_grey,
-                    fontSize: 14,
-                    height: 1.6,
-                    fontWeight: FontWeight.w600),
+  Widget _buildOverviewTab() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Stats Grid
+          GridView.count(
+            crossAxisCount: 2,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 12,
+            childAspectRatio: 2.2,
+            children: [
+              _buildSimpleStat("Total Products", "${_topProducts.length + 10}+", Icons.inventory_2_rounded, MyTheme.accent_color),
+              _buildSimpleStat("Reg. Since", "2021", Icons.event_available_rounded, MyTheme.market_green),
+              _buildSimpleStat("Response", "99%", Icons.bolt_rounded, MyTheme.golden),
+              _buildSimpleStat("Delivery", "< 24h", Icons.local_shipping_rounded, MyTheme.secondary_color),
+            ],
+          ),
+          const SizedBox(height: 32),
+          
+          // About Section
+          Text("About this Store", style: TextStyle(color: MyTheme.primaryText(context), fontSize: 16, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 12),
+          Text(
+            "Welcome to ${_shopDetails?.name ?? 'our store'}. We specialize in high-quality artisanal products sourced directly from local markets. Our mission is to bridge the gap between traditional craftsmanship and modern convenience.",
+            style: TextStyle(color: MyTheme.secondaryText(context), height: 1.6, fontSize: 14),
+          ),
+          const SizedBox(height: 32),
+
+          // New Arrivals Horizontal
+          if (_newArrivalProducts.isNotEmpty) ...[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text("New Arrivals", style: TextStyle(color: MyTheme.primaryText(context), fontSize: 16, fontWeight: FontWeight.w800)),
+                TextButton(onPressed: () => _tabController.animateTo(1), child: Text("View All", style: TextStyle(color: MyTheme.accent_color))),
+              ],
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 240, // Increased to prevent overflows
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: _newArrivalProducts.length,
+                separatorBuilder: (c, i) => const SizedBox(width: 14),
+                itemBuilder: (context, index) => SizedBox(
+                  width: 140,
+                  child: ProductCard(
+                    id: _newArrivalProducts[index].id,
+                    image: _newArrivalProducts[index].thumbnail_image,
+                    name: _newArrivalProducts[index].name,
+                    main_price: _newArrivalProducts[index].main_price,
+                    stroked_price: _newArrivalProducts[index].stroked_price,
+                    has_discount: _newArrivalProducts[index].has_discount,
+                  ),
+                ),
               ),
             ),
-            Padding(
-              padding: EdgeInsets.fromLTRB(8, 4, 8, 8),
-              child: buildRatingWithCountRow(),
-            ),
           ],
-        ),
+        ],
       ),
-    ]);
+    );
   }
 
-  Row buildRatingWithCountRow() {
-    return Row(
-      children: [
-        RatingBar(
-          itemSize: 14.0,
-          ignoreGestures: true,
-          initialRating: double.parse((_shopDetails.rating ?? 0.0).toString()),
-          direction: Axis.horizontal,
-          allowHalfRating: true,
-          itemCount: 5,
-          ratingWidget: RatingWidget(
-            full: Icon(Icons.star, color: Colors.amber),
-            half: Icon(Icons.star_half, color: Colors.amber),
-            empty: Icon(Icons.star, color: Color.fromRGBO(224, 224, 225, 1)),
-          ),
-          itemPadding: EdgeInsets.only(right: 4.0),
-          onRatingUpdate: (rating) {
-            print(rating);
-          },
-        ),
-      ],
+  Widget _buildProductsTab() {
+    if (_featuredProducts.isEmpty && _topProducts.isEmpty) {
+      return Center(child: Text("No products available."));
+    }
+    
+    final allProducts = [..._featuredProducts, ..._topProducts];
+    
+    return GridView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 16,
+        mainAxisSpacing: 16,
+        childAspectRatio: 0.65,
+      ),
+      itemCount: allProducts.length,
+      itemBuilder: (context, index) => ProductCard(
+        id: allProducts[index].id,
+        image: allProducts[index].thumbnail_image,
+        name: allProducts[index].name,
+        main_price: allProducts[index].main_price,
+        stroked_price: allProducts[index].stroked_price,
+        has_discount: allProducts[index].has_discount,
+      ),
     );
+  }
+
+  Widget _buildReviewsTab() {
+    return Padding(
+      padding: const EdgeInsets.all(24.0),
+      child: Column(
+        children: [
+          Icon(Icons.rate_review_outlined, size: 60, color: MyTheme.secondaryText(context).withOpacity(0.3)),
+          const SizedBox(height: 16),
+          Text("No reviews yet", style: TextStyle(color: MyTheme.primaryText(context), fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          Text("Be the first to share your experience with this store.", textAlign: TextAlign.center, style: TextStyle(color: MyTheme.secondaryText(context))),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSimpleStat(String label, String value, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: MyTheme.surface(context),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: MyTheme.border(context).withOpacity(0.5)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(color: color.withOpacity(0.1), shape: BoxShape.circle),
+            child: Icon(icon, size: 16, color: color),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(value, style: TextStyle(color: MyTheme.primaryText(context), fontSize: 14, fontWeight: FontWeight.w900, letterSpacing: -0.5)),
+                Text(label, style: TextStyle(color: MyTheme.secondaryText(context), fontSize: 9, fontWeight: FontWeight.w600)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildModernBottomBar() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+      decoration: BoxDecoration(
+        color: MyTheme.surface(context),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 20, offset: const Offset(0, -5))],
+      ),
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: MyTheme.primary(context),
+          minimumSize: const Size(double.infinity, 54),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          elevation: 4,
+          shadowColor: MyTheme.primary(context).withOpacity(0.4),
+        ),
+        onPressed: () {
+          Navigator.push(context, MaterialPageRoute(builder: (context) {
+            return SellerProducts(id: _shopDetails.id, shop_name: _shopDetails.name);
+          }));
+        },
+        child: const Text(
+          "CONTACT STORE",
+          style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w900, letterSpacing: 1),
+        ),
+      ),
+    );
+  }
+}
+
+class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
+  _SliverAppBarDelegate(this._tabBar, {required this.color});
+
+  final TabBar _tabBar;
+  final Color color;
+
+  @override
+  double get minExtent => _tabBar.preferredSize.height;
+  @override
+  double get maxExtent => _tabBar.preferredSize.height;
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return Container(
+      color: color,
+      child: _tabBar,
+    );
+  }
+
+  @override
+  bool shouldRebuild(_SliverAppBarDelegate oldDelegate) {
+    return false;
   }
 }

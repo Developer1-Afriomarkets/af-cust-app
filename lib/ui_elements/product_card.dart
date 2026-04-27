@@ -45,138 +45,123 @@ class _ProductCardState extends State<ProductCard> {
           color: MyTheme.surface(context),
           borderRadius: BorderRadius.circular(12.0),
           border: Border.all(
-            color: isDark ? Colors.white.withOpacity(0.18) : Colors.black.withOpacity(0.08),
+            color: MyTheme.border(context).withOpacity(0.5),
             width: 1.0,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(isDark ? 0.4 : 0.08),
-              blurRadius: 16,
-              spreadRadius: 1,
+              color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
+              blurRadius: 15,
               offset: const Offset(0, 8),
             ),
           ],
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            // Product image with rounded top corners
-            Expanded(
-              flex: 3,
-              child: Container(
-                width: double.infinity,
-                child: ClipRRect(
-                  clipBehavior: Clip.hardEdge,
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(16),
-                    bottom: Radius.zero,
-                  ),
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      (() {
-                        String? imageUrl = PathHelper.getImageUrl(widget.image);
-                        return imageUrl != null
-                            ? CachedNetworkImage(
-                                imageUrl: imageUrl,
-                                fit: BoxFit.cover,
-                                placeholder: (context, url) =>
-                                    ShimmerHelper().buildBasicShimmer(),
-                                errorWidget: (context, url, error) => Image.asset(
-                                  'assets/placeholder.png',
-                                  fit: BoxFit.cover,
-                                ),
-                              )
-                            : Image.asset(
-                                'assets/placeholder.png',
-                                fit: BoxFit.cover,
-                              );
-                      })(),
-                      // Discount badge
-                      if (widget.has_discount ?? false)
-                        Positioned(
-                          top: 8,
-                          left: 8,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: MyTheme.market_red,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Text(
-                              'SALE',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 0.5,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              // Product image
+              AspectRatio(
+                aspectRatio: 1,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    (() {
+                      String? imageUrl = PathHelper.getImageUrl(widget.image);
+                      return imageUrl != null
+                          ? CachedNetworkImage(
+                              imageUrl: imageUrl,
+                              fit: BoxFit.cover,
+                              placeholder: (context, url) =>
+                                  ShimmerHelper().buildBasicShimmer(radius: 0),
+                              errorWidget: (context, url, error) => Container(
+                                color: MyTheme.border(context).withOpacity(0.2),
+                                child: Icon(Icons.image_not_supported_outlined, color: MyTheme.secondaryText(context).withOpacity(0.3)),
                               ),
+                            )
+                          : Container(
+                                color: MyTheme.border(context).withOpacity(0.2),
+                                child: Icon(Icons.image_not_supported_outlined, color: MyTheme.secondaryText(context).withOpacity(0.3)),
+                              );
+                    })(),
+                    // Discount badge
+                    if (widget.has_discount ?? false)
+                      Positioned(
+                        top: 10,
+                        right: 10,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: MyTheme.market_red,
+                            borderRadius: BorderRadius.circular(30),
+                            boxShadow: [
+                              BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 4, offset: const Offset(0, 2))
+                            ]
+                          ),
+                          child: const Text(
+                            'OFFER',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.8,
                             ),
                           ),
                         ),
-                    ],
-                  ),
+                      ),
+                  ],
                 ),
               ),
-            ),
-            // Product info section
-            Expanded(
-              flex: 2,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
+              // Product info
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    // Product name
                     Text(
                       widget.name ?? "",
                       overflow: TextOverflow.ellipsis,
                       maxLines: 2,
                       style: TextStyle(
                         color: MyTheme.primaryText(context),
-                        fontSize: 13,
-                        height: 1.3,
-                        fontWeight: FontWeight.w600),
+                        fontSize: 12,
+                        height: 1.4,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                    // Price row
-                    Row(
+                    const SizedBox(height: 10),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: Text(
-                            widget.main_price ?? "",
-                            textAlign: TextAlign.left,
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 1,
-                            style: TextStyle(
-                              color: MyTheme.primary(context),
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700),
+                        Text(
+                          widget.main_price ?? "",
+                          style: TextStyle(
+                            color: MyTheme.primary(context),
+                            fontSize: 15,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -0.5,
                           ),
                         ),
-                        if (widget.has_discount ?? false)
+                        if (widget.has_discount ?? false) ...[
+                          const SizedBox(height: 2),
                           Text(
                             widget.stroked_price ?? "",
-                            textAlign: TextAlign.left,
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 1,
                             style: TextStyle(
                               decoration: TextDecoration.lineThrough,
-                              color: MyTheme.secondaryText(context),
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500),
+                              color: MyTheme.secondaryText(context).withOpacity(0.6),
+                              fontSize: 10,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
+                        ],
                       ],
                     ),
                   ],
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

@@ -2,9 +2,8 @@ import 'package:afriomarkets_cust_app/my_theme.dart';
 import 'package:afriomarkets_cust_app/screens/seller_details.dart';
 import 'package:flutter/material.dart';
 import 'package:afriomarkets_cust_app/ui_elements/product_card.dart';
-import 'package:afriomarkets_cust_app/ui_elements/shop_square_card.dart';
+import 'package:afriomarkets_cust_app/ui_elements/store_card.dart';
 import 'package:afriomarkets_cust_app/ui_elements/brand_square_card.dart';
-
 import 'package:afriomarkets_cust_app/custom/toast_component.dart';
 import 'package:afriomarkets_cust_app/repositories/category_repository.dart';
 import 'package:afriomarkets_cust_app/repositories/brand_repository.dart';
@@ -16,8 +15,8 @@ import 'package:flutter_typeahead/flutter_typeahead.dart';
 import 'package:afriomarkets_cust_app/repositories/search_repository.dart';
 import 'package:afriomarkets_cust_app/helpers/shared_value_helper.dart';
 import 'package:afriomarkets_cust_app/l10n/app_localizations.dart';
-
 import 'package:afriomarkets_cust_app/data_model/search_suggestion_response.dart';
+import 'package:afriomarkets_cust_app/data_model/shop_response.dart';
 
 class WhichFilter {
   String option_key;
@@ -1178,17 +1177,11 @@ class _FilterState extends State<Filter> {
                 shrinkWrap: true,
                 itemBuilder: (context, index) {
                   // 3
-                  return GestureDetector(
-                    onTap: () {
-                      Navigator.push(context,
-                          MaterialPageRoute(builder: (context) {
-                        return SellerDetails(id: _shopList[index].id);
-                      }));
-                    },
-                    child: ShopSquareCard(
+                  return StoreCard(
+                    store: Shop(
                       id: _shopList[index].id,
-                      image: _shopList[index].logo,
                       name: _shopList[index].name,
+                      logo: _shopList[index].logo,
                     ),
                   );
                 },

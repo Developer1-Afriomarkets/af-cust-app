@@ -76,13 +76,41 @@ class ExplorerRepository {
 
   /// Fetch Stores. Currently uses the Medusa-backed ShopRepository,
   /// optionally filtered by name.
+  /// Fetch all stores from Supabase (Featured/Top Level)
+  Future<List<Shop>> getAllStores({int limit = 10, String? regionId}) async {
+    try {
+      var request = _supabase.from('store').select('*');
+      if (regionId != null && regionId.isNotEmpty) {
+        // Try both metadata->>region_id and metadata->region->>id for robustness
+        request = request.or('metadata->>region_id.eq.$regionId,metadata->region->>id.eq.$regionId');
+      }
+      final response = await request.limit(limit);
+
+      final List<Shop> shops = [];
+      for (var row in response) {
+        shops.add(Shop(
+           id: row['id']?.toString(),
+           name: row['name'] ?? row['store_name'] ?? '',
+           logo: row['logo'] ?? '',
+        ));
+      }
+      return shops;
+    } catch (e) {
+      debugPrint("Error fetching all stores: $e");
+      return [];
+    }
+  }
+
   /// Fetch Stores directly from Supabase, bridging Store profiles into native Market environments.
   Future<List<Shop>> getStoresByMarket(String marketId, {int page = 1, String query = ''}) async {
     try {
-      var request = _supabase
-          .from('store')
-          .select('*')
-          .eq('market_id', marketId);
+      // Supporting both metadata->>market_id and metadata->market->>id for robustness
+      var request = _supabase.from('store').select('*');
+      
+      if (marketId != 'global') {
+        // Supporting both metadata->>market_id and metadata->market->>id for robustness
+        request = request.or('metadata->>market_id.eq.$marketId,metadata->market->>id.eq.$marketId');
+      }
           
       if (query.isNotEmpty) {
         request = request.ilike('name', '%$query%');
@@ -94,7 +122,7 @@ class ExplorerRepository {
       for (var row in response) {
         // Handle ID mappings explicitly as Supabase migrations might carry raw string types or numeric mappings.
         shops.add(Shop(
-           id: row['id'] is int ? row['id'] : (int.tryParse(row['id'].toString()) ?? 0),
+           id: row['id']?.toString(),
            name: row['name'] ?? row['store_name'] ?? '',
            logo: row['logo'] ?? '',
         ));
@@ -110,7 +138,7 @@ class ExplorerRepository {
     try {
       final productRepo = ProductRepository();
       if (context.isAtStoreLevel) {
-        return await productRepo.getShopProducts(id: context.selectedStore?.id ?? 0, page: page, name: query);
+        return await productRepo.getShopProducts(id: context.selectedStore?.id ?? '0', page: page, name: query);
       }
       return await productRepo.getFilteredProducts(name: query, page: page, sort_key: sort_key);
     } catch (e) {

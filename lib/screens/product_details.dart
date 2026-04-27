@@ -1726,37 +1726,29 @@ class _ProductDetailsState extends State<ProductDetails> {
 
   Row buildMainPriceRow() {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.baseline,
+      textBaseline: TextBaseline.alphabetic,
       children: [
-        Padding(
-          padding: app_language_rtl.$
-              ? EdgeInsets.only(left: 8.0)
-              : EdgeInsets.only(right: 8.0),
-          child: Container(
-            width: 75,
-            child: Text(
-              AppLocalizations.of(context)!.product_details_screen_price,
-              style: TextStyle(color: Color.fromRGBO(153, 153, 153, 1)),
-            ),
-          ),
-        ),
-        _productDetails.has_discount
-            ? Padding(
-                padding: EdgeInsets.only(right: 8.0),
-                child: Text(_productDetails.stroked_price,
-                    style: TextStyle(
-                        decoration: TextDecoration.lineThrough,
-                        color: Color.fromRGBO(224, 224, 225, 1),
-                        fontSize: 18.0,
-                        fontWeight: FontWeight.w600)),
-              )
-            : Container(),
         Text(
           _singlePriceString,
           style: TextStyle(
               color: MyTheme.primary(context),
-              fontSize: 20.0,
-              fontWeight: FontWeight.w700),
-        )
+              fontSize: 24.0,
+              fontWeight: FontWeight.w900,
+              letterSpacing: -1),
+        ),
+        if (_productDetails.has_discount) ...[
+          const SizedBox(width: 12),
+          Text(
+            _productDetails.stroked_price,
+            style: TextStyle(
+              decoration: TextDecoration.lineThrough,
+              color: MyTheme.secondaryText(context).withOpacity(0.5),
+              fontSize: 16.0,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -1782,43 +1774,27 @@ class _ProductDetailsState extends State<ProductDetails> {
           ],
         ),
       ),
-      leading: Padding(
-        padding: const EdgeInsets.only(top: 8.0),
-        child: Builder(
-          builder: (context) => IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
-            onPressed: () => Navigator.of(context).pop(),
-          ),
-        ),
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+        onPressed: () => Navigator.of(context).pop(),
       ),
-      title: Container(
-        height: kToolbarHeight +
-            statusBarHeight -
-            (MediaQuery.of(context).viewPadding.top > 40 ? 32.0 : 16.0),
-        child: SizedBox(
-            width: 300,
-            child: Padding(
-              padding: const EdgeInsets.only(top: 22.0),
-              child: Text(
-                _appbarPriceString,
-                style: const TextStyle(
-                    fontSize: 16,
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold),
-              ),
-            )),
+      title: Text(
+        _appbarPriceString,
+        style: const TextStyle(
+          fontSize: 16,
+          color: Colors.white,
+          fontWeight: FontWeight.w800,
+          letterSpacing: -0.2,
+        ),
       ),
       elevation: 0.0,
       titleSpacing: 0,
       actions: <Widget>[
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 0.0, horizontal: 0.0),
-          child: IconButton(
-            icon: const Icon(Icons.share_outlined, color: Colors.white),
-            onPressed: () {
-              onPressShare(context);
-            },
-          ),
+        IconButton(
+          icon: const Icon(Icons.share_outlined, color: Colors.white, size: 20),
+          onPressed: () {
+            onPressShare(context);
+          },
         ),
       ],
     );
@@ -1826,65 +1802,65 @@ class _ProductDetailsState extends State<ProductDetails> {
 
   buildBottomAppBar(BuildContext context, _addedToCartSnackbar) {
     final isDark = MyTheme.isDark(context);
-    return BottomAppBar(
+    return Container(
       color: MyTheme.surface(context),
-      elevation: 10,
-      child: Container(
-        height: 60,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Expanded(
-              child: TextButton(
-                style: TextButton.styleFrom(
-                  minimumSize: const Size(0, 60),
-                  backgroundColor: MyTheme.golden,
-                  shape: const RoundedRectangleBorder(
-                    borderRadius: BorderRadius.zero,
-                  ),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: TextButton(
+              style: TextButton.styleFrom(
+                minimumSize: const Size(0, 50),
+                backgroundColor: MyTheme.golden.withOpacity(0.15),
+                side: BorderSide(color: MyTheme.golden, width: 1.5),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                child: Text(
-                  AppLocalizations.of(context)!
-                      .product_details_screen_button_add_to_cart
-                      .toUpperCase(),
-                  style: TextStyle(
-                      color: isDark ? const Color(0xFF1A1400) : Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.5),
-                ),
-                onPressed: () {
-                  onPressAddToCart(context, _addedToCartSnackbar);
-                },
               ),
+              child: Text(
+                AppLocalizations.of(context)!
+                    .product_details_screen_button_add_to_cart
+                    .toUpperCase(),
+                style: TextStyle(
+                    color: MyTheme.golden,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.8),
+              ),
+              onPressed: () {
+                onPressAddToCart(context, _addedToCartSnackbar);
+              },
             ),
-            const SizedBox(width: 1),
-            Expanded(
-              child: TextButton(
-                style: TextButton.styleFrom(
-                  minimumSize: const Size(0, 60),
-                  backgroundColor: MyTheme.primary(context),
-                  shape: const RoundedRectangleBorder(
-                    borderRadius: BorderRadius.zero,
-                  ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: TextButton(
+              style: TextButton.styleFrom(
+                minimumSize: const Size(0, 50),
+                backgroundColor: MyTheme.primary(context),
+                elevation: 4,
+                shadowColor: MyTheme.primary(context).withOpacity(0.3),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                child: Text(
-                  AppLocalizations.of(context)!
-                      .product_details_screen_button_buy_now
-                      .toUpperCase(),
-                  style: TextStyle(
-                      color: isDark ? const Color(0xFF1A1400) : Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.5),
-                ),
-                onPressed: () {
-                  onPressBuyNow(context);
-                },
               ),
-            )
-          ],
-        ),
+              child: Text(
+                AppLocalizations.of(context)!
+                    .product_details_screen_button_buy_now
+                    .toUpperCase(),
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.8),
+              ),
+              onPressed: () {
+                onPressBuyNow(context);
+              },
+            ),
+          )
+        ],
       ),
     );
   }

@@ -54,15 +54,9 @@ main() async {
   app_language_rtl.load();
   app_theme_mode.load();
 
-  access_token.load().whenComplete(() {
-    fetch_user();
-  });
-
-  // Initialize RegionService — detect user region for currency display
-  RegionService.detectAndSetRegion();
-
-  // Initialize Supabase Client
+  // Supabase and Region initialization
   await SupabaseService.initialize();
+  RegionService.detectAndSetRegion();
 
   SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
@@ -74,6 +68,11 @@ main() async {
       MyApp(),
     ),
   );
+
+  // Perform user session fetching after runApp to ensure SharedValue is initialized
+  access_token.load().then((_) {
+    fetch_user();
+  });
 }
 
 class MyApp extends StatefulWidget {

@@ -33,16 +33,28 @@ class ProductRepository {
   }
 
   Future<ProductMiniResponse> getShopProducts(
-      {int id = 0, page = 1, name = ''}) async {
-    return MedusaService.getProductsMapped(page: page);
+      {dynamic id = 0, page = 1, name = ''}) async {
+    try {
+      final supabaseClient = SupabaseService.client;
+      final response = await supabaseClient
+          .from('product')
+          .select('id')
+          .eq('store_id', id);
+      
+      final List<String> medusaIds = (response as List).map((row) => row['id'].toString()).toList();
+      return MedusaService.getProductsByIdsMapped(medusaIds, page: page);
+    } catch (e) {
+      debugPrint('Error fetching shop products from Supabase: $e');
+      return MedusaService.getProductsMapped(page: page);
+    }
   }
 
-  Future<ProductMiniResponse> getShopNewProducts({int id = 0, page = 1}) async {
-    return MedusaService.getProductsMapped(page: page);
+  Future<ProductMiniResponse> getShopNewProducts({dynamic id = 0, page = 1}) async {
+    return getShopProducts(id: id, page: page);
   }
 
-  Future<ProductMiniResponse> getShopTopProducts({int id = 0, page = 1}) async {
-    return MedusaService.getProductsMapped(page: page);
+  Future<ProductMiniResponse> getShopTopProducts({dynamic id = 0, page = 1}) async {
+    return getShopProducts(id: id, page: page);
   }
 
   Future<ProductMiniResponse> getBrandProducts(
@@ -99,8 +111,7 @@ class ProductRepository {
             .maybeSingle();
 
         if (storeResponse != null) {
-          response.detailed_products[0].shop_id = 
-            storeResponse['id'] is int ? storeResponse['id'] : (int.tryParse(storeResponse['id'].toString()) ?? 0);
+          response.detailed_products[0].shop_id = storeResponse['id']?.toString();
           response.detailed_products[0].shop_name = storeResponse['name'] ?? storeResponse['store_name'] ?? '';
           response.detailed_products[0].shop_logo = '';
         }
@@ -116,7 +127,7 @@ class ProductRepository {
     return MedusaService.getProductsMapped();
   }
 
-  Future<ProductMiniResponse> getTopFromThisSellerProducts({int id = 0}) async {
+  Future<ProductMiniResponse> getTopFromThisSellerProducts({dynamic id = 0}) async {
     return MedusaService.getProductsMapped();
   }
 

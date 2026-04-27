@@ -60,20 +60,45 @@ class MedusaService {
     String? categoryId,
     String? q,
   }) async {
+    return _getProductsInternal(page: page, limit: limit, categoryId: categoryId, q: q);
+  }
+
+  /// Fetches specific products by their Medusa string IDs.
+  static Future<ProductMiniResponse> getProductsByIdsMapped(List<String> ids, {int page = 1, int limit = 20}) async {
+    if (ids.isEmpty) return ProductMiniResponse(products: [], success: true, status: 200);
+    return _getProductsInternal(page: page, limit: limit, ids: ids);
+  }
+
+  static Future<ProductMiniResponse> _getProductsInternal({
+    int page = 1,
+    int limit = 20,
+    String? categoryId,
+    String? q,
+    List<String>? ids,
+  }) async {
     return safeApiCall(() async {
       final offset = (page - 1) * limit;
 
-      final queryParams = {
+      final queryParams = <String, String>{
         'limit': '$limit',
         'offset': '$offset',
         'expand': 'variants,variants.prices,images',
-        if (categoryId != null && categoryId.isNotEmpty)
-          'category_id[]': categoryId,
-        if (q != null && q.isNotEmpty) 'q': q,
       };
+      
+      if (categoryId != null && categoryId.isNotEmpty) queryParams['category_id[]'] = categoryId;
+      if (q != null && q.isNotEmpty) queryParams['q'] = q;
 
-      final uri = Uri.parse('$_baseUrl/store/products')
-          .replace(queryParameters: queryParams);
+      var uri = Uri.parse('$_baseUrl/store/products').replace(queryParameters: queryParams);
+      
+      // Handle multiple IDs by appending manually to avoid Uri.replace encoding issues with repeated keys
+      if (ids != null && ids.isNotEmpty) {
+        String url = uri.toString();
+        for (var id in ids) {
+          url += '&id[]=$id';
+        }
+        uri = Uri.parse(url);
+      }
+
       final response = await http.get(uri, headers: _headers);
       _assertJson(response);
       final body = jsonDecode(response.body) as Map<String, dynamic>;

@@ -4,14 +4,17 @@ import 'package:afriomarkets_cust_app/my_theme.dart';
 
 class ShimmerHelper {
   buildBasicShimmer(
-      {double height = double.infinity, double width = double.infinity}) {
+      {double height = double.infinity, double width = double.infinity, double radius = 0.0}) {
     return Shimmer.fromColors(
       baseColor: MyTheme.shimmer_base,
       highlightColor: MyTheme.shimmer_highlighted,
       child: Container(
         height: height,
         width: width,
-        color: Colors.white,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(radius),
+        ),
       ),
     );
   }

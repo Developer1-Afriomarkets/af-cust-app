@@ -18,14 +18,17 @@ import 'package:afriomarkets_cust_app/helpers/shared_value_helper.dart';
 import 'package:afriomarkets_cust_app/services/region_service.dart';
 import 'package:afriomarkets_cust_app/helpers/price_helper.dart';
 import 'package:afriomarkets_cust_app/l10n/app_localizations.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 import 'package:afriomarkets_cust_app/screens/explorer/explorer_main.dart';
 import 'package:afriomarkets_cust_app/data_model/explorer_context.dart';
 import 'package:afriomarkets_cust_app/repositories/explorer_repository.dart';
 import 'package:afriomarkets_cust_app/ui_elements/state_square_card.dart';
 import 'package:afriomarkets_cust_app/ui_elements/market_square_card.dart';
+import 'package:afriomarkets_cust_app/ui_elements/store_card.dart';
 import 'package:afriomarkets_cust_app/data_model/state_model.dart';
 import 'package:afriomarkets_cust_app/data_model/market_model.dart';
+import 'package:afriomarkets_cust_app/data_model/shop_response.dart';
 
 class Home extends StatefulWidget {
   Home(
@@ -51,9 +54,11 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
   List<model.Slider> _carouselSliderList = [];
   var _featuredCategoryList = [];
   var _featuredProductList = [];
+  List<Shop> _featuredStoreList = [];
   bool _isProductInitial = true;
   bool _isCategoryInitial = true;
   bool _isCarouselInitial = true;
+  bool _isStoreInitial = true;
   int _totalProductData = 0;
   int _productPage = 1;
   bool _showProductLoadingContainer = false;
@@ -64,23 +69,13 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
   void initState() {
     super.initState();
     fetchAll();
-
-    _mainScrollController.addListener(() {
-      if (_mainScrollController.position.pixels ==
-          _mainScrollController.position.maxScrollExtent) {
-        setState(() {
-          _productPage++;
-        });
-        _showProductLoadingContainer = true;
-        fetchFeaturedProducts();
-      }
-    });
   }
 
   fetchAll() {
     fetchCarouselImages();
     fetchFeaturedCategories();
     fetchFeaturedProducts();
+    fetchFeaturedStores();
   }
 
   fetchCarouselImages() async {
@@ -108,6 +103,13 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
     _isProductInitial = false;
     _totalProductData = productResponse.meta?.total ?? 0;
     _showProductLoadingContainer = false;
+    if (mounted) setState(() {});
+  }
+
+  fetchFeaturedStores() async {
+    var storeResponse = await ExplorerRepository().getAllStores();
+    _featuredStoreList.addAll(storeResponse);
+    _isStoreInitial = false;
     if (mounted) setState(() {});
   }
 
@@ -191,7 +193,12 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
                       ),
                     ),
 
-                    SliverToBoxAdapter(child: const SizedBox(height: 28)),
+                    SliverToBoxAdapter(child: const SizedBox(height: 24)),
+
+                    // ─── 2.5 FEATURED STORES ─────────────────────────
+                    SliverToBoxAdapter(child: _buildFeaturedStoresSection()),
+
+                    SliverToBoxAdapter(child: const SizedBox(height: 24)),
 
                     // ─── 3. EXPLORE AFRICAN MARKETS ──────────────────
                     SliverToBoxAdapter(child: _buildExploreMarketsSection()),
@@ -366,8 +373,8 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
         padding: const EdgeInsets.only(left: 16),
         itemCount: 4,
         itemBuilder: (_, __) => Padding(
-          padding: const EdgeInsets.only(right: 10),
-          child: ShimmerHelper().buildBasicShimmer(height: 100, width: 100),
+          padding: const EdgeInsets.only(right: 14),
+          child: ShimmerHelper().buildBasicShimmer(height: 70, width: 70, radius: 35),
         ),
       );
     }
@@ -388,8 +395,21 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
       itemCount: _featuredCategoryList.length,
       itemBuilder: (context, index) {
         final cat = _featuredCategoryList[index];
-        final color =
-            MyTheme.marketCardColors[index % MyTheme.marketCardColors.length];
+        final String name = cat.name ?? '';
+        final color = MyTheme.marketCardColors[index % MyTheme.marketCardColors.length];
+        
+        // Icon mapping for better aesthetic when image is missing
+        IconData categoryIcon = Icons.local_mall_rounded; // Nicer default: Shopping Bag
+        if (name.toLowerCase().contains('food')) categoryIcon = Icons.restaurant_rounded;
+        if (name.toLowerCase().contains('cloth') || name.toLowerCase().contains('fashion') || name.toLowerCase().contains('shirt') || name.toLowerCase().contains('pant')) {
+          categoryIcon = Icons.checkroom_rounded;
+        }
+        if (name.toLowerCase().contains('tech') || name.toLowerCase().contains('phone')) categoryIcon = Icons.smartphone_rounded;
+        if (name.toLowerCase().contains('home') || name.toLowerCase().contains('furnitur')) categoryIcon = Icons.chair_rounded;
+        if (name.toLowerCase().contains('beauty')) categoryIcon = Icons.face_retouching_natural_rounded;
+        if (name.toLowerCase().contains('grocery')) categoryIcon = Icons.local_grocery_store_rounded;
+        if (name.toLowerCase().contains('jewel') || name.toLowerCase().contains('access')) categoryIcon = Icons.watch_rounded;
+        if (name.toLowerCase().contains('merch')) categoryIcon = Icons.local_offer_rounded;
 
         return GestureDetector(
           onTap: () {
@@ -401,45 +421,72 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
             }));
           },
           child: Container(
-            width: 90,
-            margin: const EdgeInsets.only(right: 12),
+            width: 80,
+            margin: const EdgeInsets.only(right: 16),
             child: Column(
               children: [
-                // Circle icon
+                // Premium Circle
                 Container(
-                  width: 64,
-                  height: 64,
+                  width: 72,
+                  height: 72,
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
                     shape: BoxShape.circle,
-                    border: Border.all(
-                      color: color.withOpacity(0.2),
-                      width: 2,
+                    color: MyTheme.surface(context),
+                    boxShadow: [
+                      BoxShadow(
+                        color: color.withOpacity(0.15),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(3),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            color.withOpacity(0.2),
+                            color.withOpacity(0.05),
+                          ],
+                        ),
+                        border: Border.all(
+                          color: color.withOpacity(0.3),
+                          width: 1,
+                        ),
+                      ),
+                      child: Center(
+                        child: (cat.banner != null &&
+                                cat.banner!.isNotEmpty &&
+                                cat.banner!.startsWith('http'))
+                            ? ClipOval(
+                                child: CachedNetworkImage(
+                                  imageUrl: cat.banner!,
+                                  fit: BoxFit.cover,
+                                  placeholder: (context, url) => Container(color: color.withOpacity(0.1)),
+                                  errorWidget: (context, url, error) => Icon(categoryIcon, color: color, size: 28),
+                                ),
+                              )
+                            : Icon(categoryIcon, color: color, size: 28),
+                      ),
                     ),
                   ),
-                  child: (cat.banner != null &&
-                          cat.banner!.isNotEmpty &&
-                          cat.banner!.startsWith('http'))
-                      ? ClipOval(
-                          child: FadeInImage.assetNetwork(
-                            placeholder: 'assets/placeholder.png',
-                            image: cat.banner!,
-                            fit: BoxFit.cover,
-                          ),
-                        )
-                      : Icon(Icons.category, color: color, size: 28),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 10),
                 // Name
                 Text(
-                  cat.name ?? '',
+                  name,
                   textAlign: TextAlign.center,
                   overflow: TextOverflow.ellipsis,
-                  maxLines: 2,
+                  maxLines: 1,
                   style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
                     color: MyTheme.primaryText(context),
+                    letterSpacing: -0.2,
                   ),
                 ),
               ],
@@ -799,6 +846,54 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildFeaturedStoresSection() {
+    return FutureBuilder(
+      future: ExplorerRepository().getAllStores(regionId: RegionService.currentRegionSync?.id),
+      builder: (context, AsyncSnapshot<List<Shop>> snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+           return SizedBox(
+             height: 180,
+             child: ListView.builder(
+               scrollDirection: Axis.horizontal,
+               padding: const EdgeInsets.symmetric(horizontal: 16),
+               itemCount: 4,
+               itemBuilder: (c, i) => Padding(
+                 padding: const EdgeInsets.only(right: 14),
+                 child: ShimmerHelper().buildBasicShimmer(width: 200, radius: 20),
+               ),
+             ),
+           );
+        }
+        
+        List<Shop> stores = snapshot.data ?? [];
+        if (stores.isEmpty) return const SizedBox.shrink();
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSectionHeader('Handpicked Stores', onViewAll: () {
+               Navigator.push(context, MaterialPageRoute(builder: (context) => const ExplorerMain()));
+            }),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 280,
+              child: ListView.separated(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                scrollDirection: Axis.horizontal,
+                itemCount: stores.length,
+                separatorBuilder: (c, i) => const SizedBox(width: 14),
+                itemBuilder: (context, index) => SizedBox(
+                  width: 220,
+                  child: StoreCard(store: stores[index]),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

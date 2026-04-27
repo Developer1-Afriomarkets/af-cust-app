@@ -45,22 +45,56 @@ class Shop {
     this.id,
     this.name,
     this.logo,
+    this.banner,
+    this.tagline,
+    this.rating,
+    this.reviewCount,
+    this.metadata,
   });
 
-  int? id;
+  dynamic id;
   String? name;
   String? logo;
+  String? banner;
+  String? tagline;
+  double? rating;
+  int? reviewCount;
+  Map<String, dynamic>? metadata;
 
   factory Shop.fromJson(Map<String, dynamic> json) => Shop(
         id: json["id"],
         name: json["name"],
         logo: json["logo"],
+        banner: json["banner"],
+        tagline: json["tagline"],
+        rating: json["rating"]?.toDouble(),
+        reviewCount: json["review_count"],
+        metadata: json["metadata"],
       );
+
+  factory Shop.fromSupabase(Map<String, dynamic> json) {
+    final meta = json['metadata'] ?? {};
+    return Shop(
+      id: json['id'] is int ? json['id'] : (int.tryParse(json['id'].toString()) ?? 0),
+      name: json['name'] ?? json['store_name'] ?? '',
+      logo: json['logo'] ?? '',
+      banner: json['banner'] ?? meta['banner'] ?? '',
+      tagline: json['tagline'] ?? meta['tagline'] ?? '',
+      rating: (json['rating'] ?? meta['rating'] ?? 4.8).toDouble(),
+      reviewCount: json['review_count'] ?? meta['review_count'] ?? 120,
+      metadata: meta,
+    );
+  }
 
   Map<String, dynamic> toJson() => {
         "id": id,
         "name": name,
         "logo": logo,
+        "banner": banner,
+        "tagline": tagline,
+        "rating": rating,
+        "review_count": reviewCount,
+        "metadata": metadata,
       };
 }
 

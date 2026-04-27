@@ -289,7 +289,7 @@ class _CategoryListState extends State<CategoryList> {
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: MyTheme.surface(context),
-        borderRadius: BorderRadius.circular(16.0),
+        borderRadius: BorderRadius.circular(12.0),
         border: Border.all(
           color: MyTheme.border(context).withOpacity(0.5),
           width: 1.0,
@@ -303,7 +303,7 @@ class _CategoryListState extends State<CategoryList> {
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(16.0),
+        borderRadius: BorderRadius.circular(12.0),
         child: Row(
             mainAxisAlignment: MainAxisAlignment.start,
             children: <Widget>[
@@ -353,8 +353,11 @@ class _CategoryListState extends State<CategoryList> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 8),
-                  Row(
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 8,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       _buildCategoryAction(
                         label: AppLocalizations.of(context)!
@@ -385,11 +388,12 @@ class _CategoryListState extends State<CategoryList> {
                           }
                         },
                       ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                        child: Text(
-                          "•",
-                          style: TextStyle(color: MyTheme.secondaryText(context).withOpacity(0.5)),
+                      Container(
+                        width: 4,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: MyTheme.secondaryText(context).withOpacity(0.3),
+                          shape: BoxShape.circle,
                         ),
                       ),
                       _buildCategoryAction(
@@ -436,9 +440,12 @@ class _CategoryListState extends State<CategoryList> {
       child: Text(
         label,
         style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          color: isEnabled ? MyTheme.teal_accent : MyTheme.secondaryText(context).withOpacity(0.5),
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+          color: isEnabled ? MyTheme.market_amber : MyTheme.secondaryText(context).withOpacity(0.5),
+          decoration: isEnabled ? TextDecoration.underline : TextDecoration.none,
+          decorationThickness: 2,
+          decorationColor: MyTheme.market_amber.withOpacity(0.3),
         ),
       ),
     );

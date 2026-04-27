@@ -4,7 +4,7 @@ import 'package:afriomarkets_cust_app/data_model/explorer_context.dart';
 import 'package:afriomarkets_cust_app/repositories/explorer_repository.dart';
 import 'package:afriomarkets_cust_app/ui_elements/state_square_card.dart';
 import 'package:afriomarkets_cust_app/ui_elements/market_square_card.dart';
-import 'package:afriomarkets_cust_app/ui_elements/store_square_card.dart';
+import 'package:afriomarkets_cust_app/ui_elements/store_card.dart';
 import 'package:afriomarkets_cust_app/ui_elements/product_card.dart';
 import 'package:shimmer/shimmer.dart';
 
@@ -146,12 +146,12 @@ class _ExplorerBrowseState extends State<ExplorerBrowse> {
           padding: const EdgeInsets.all(16),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,
-            childAspectRatio: 0.9,
+            childAspectRatio: 0.7,
             crossAxisSpacing: 16,
             mainAxisSpacing: 16,
           ),
           itemCount: snapshot.data!.length,
-          itemBuilder: (context, index) => StoreSquareCard(store: snapshot.data![index]),
+          itemBuilder: (context, index) => StoreCard(store: snapshot.data![index]),
         );
       },
     );
@@ -170,7 +170,7 @@ class _ExplorerBrowseState extends State<ExplorerBrowse> {
           padding: const EdgeInsets.all(16),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,
-            childAspectRatio: 0.72,
+            childAspectRatio: 0.65,
             crossAxisSpacing: 16,
             mainAxisSpacing: 16,
           ),
