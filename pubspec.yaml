@@ -1,0 +1,99 @@
+name: afriomarkets_cust_app
+description: Afriomarkets Customer App — African marketplace with cultural exploration
+
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.0.0 <=3.9.2"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # --- Core Networking & Data ---
+  http: ^1.2.0
+  provider: ^6.1.0
+  json_annotation: ^4.8.0
+
+  # --- Supabase Integration ---
+  supabase_flutter: ^2.12.0
+  supabase_auth_ui: ^0.5.5
+  storage_client: ^2.4.1
+
+  # --- Medusa Integration ---
+  medusa_client: ^0.0.4
+  medusa_js_dart: ^0.0.6
+
+  # --- UI & Design ---
+  shimmer: ^3.0.0
+  flutter_html: ^3.0.0-beta.2
+  flutter_svg: ^2.0.9
+  url_launcher: ^6.2.0
+  google_fonts: ^6.1.0
+  flutter_rating_bar: ^4.0.1
+  expandable: ^5.0.1
+  dropdown_search: ^5.0.6
+  carousel_slider: ^5.0.0
+  cached_network_image: ^3.3.0
+  photo_view: ^0.15.0
+  cupertino_icons: ^1.0.8
+
+  # --- Utilities ---
+  shared_preferences: ^2.2.0
+  connectivity_plus: ^6.0.0
+  package_info_plus: ^8.0.0
+  permission_handler: ^11.3.0
+  image_picker: ^1.0.7
+  intl: ^0.20.2
+  logging: ^1.2.0
+
+  # --- Auth & Social ---
+  flutter_facebook_auth: ^7.0.0
+  google_sign_in: ^6.2.0
+  firebase_messaging: ^15.0.0
+
+  # --- Chat & Messaging ---
+  flutter_chat_bubble: ^2.0.2
+  flutter_typeahead: ^5.2.0
+
+  # --- Payment ---
+  # (Retain from old project, specific payment screens handle webview flows)
+  webview_flutter: ^4.7.0
+
+  # --- Maps ---
+  google_maps_flutter: ^2.6.0
+  intl_phone_number_input: ^0.7.4
+
+  # --- Misc ---
+  dotted_line: ^3.2.2
+  timeline_tile: ^2.0.0
+  sn_progress_dialog: ^1.2.0
+  one_context: ^4.0.0
+  share_plus: ^10.0.0
+  shared_value: ^1.0.0+1
+  clipboard: ^0.1.3
+  flutter_countdown_timer: ^4.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  build_runner: ^2.4.0
+  json_serializable: ^6.7.0
+  flutter_launcher_icons: ^0.14.0
+  flutter_lints: ^5.0.0
+
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/app_logo.png"
+
+flutter:
+  uses-material-design: true
+  generate: true
+  assets:
+    - assets/
+    - dummy_assets/
