@@ -8,6 +8,8 @@ import 'package:afriomarkets_cust_app/screens/category_products.dart';
 import 'package:afriomarkets_cust_app/repositories/category_repository.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:afriomarkets_cust_app/helpers/path_helper.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:afriomarkets_cust_app/helpers/shimmer_helper.dart';
 import 'package:afriomarkets_cust_app/helpers/shared_value_helper.dart';
 import 'package:afriomarkets_cust_app/l10n/app_localizations.dart';
 import 'package:afriomarkets_cust_app/screens/filter.dart';
@@ -313,12 +315,22 @@ class _CategoryListState extends State<CategoryList> {
               child: Stack(
                 children: [
                   Positioned.fill(
-                    child: FadeInImage.assetNetwork(
-                      placeholder: 'assets/placeholder.png',
-                      image: PathHelper.getImageUrlSafe(
-                          categoryResponse.categories[index].banner ?? ""),
-                      fit: BoxFit.cover,
-                    ),
+                    child: (() {
+                      String? imageUrl = PathHelper.getImageUrlSafe(
+                          categoryResponse.categories[index].banner ?? "");
+                      return CachedNetworkImage(
+                        imageUrl: imageUrl,
+                        fit: BoxFit.cover,
+                        placeholder: (context, url) =>
+                            ShimmerHelper().buildBasicShimmer(radius: 0),
+                        errorWidget: (context, url, error) => Container(
+                          color: MyTheme.border(context).withOpacity(0.2),
+                          child: Icon(Icons.image_not_supported_outlined,
+                              color: MyTheme.secondaryText(context)
+                                  .withOpacity(0.3)),
+                        ),
+                      );
+                    })(),
                   ),
                   Positioned.fill(
                     child: Container(
