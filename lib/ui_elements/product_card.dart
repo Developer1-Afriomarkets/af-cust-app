@@ -114,50 +114,52 @@ class _ProductCardState extends State<ProductCard> {
                 ),
               ),
               // Product info
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      widget.name ?? "",
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 2,
-                      style: TextStyle(
-                        color: MyTheme.primaryText(context),
-                        fontSize: 12,
-                        height: 1.4,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          widget.main_price ?? "",
-                          style: TextStyle(
-                            color: MyTheme.primary(context),
-                            fontSize: 15,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: -0.5,
-                          ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.name ?? "",
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 2,
+                        style: TextStyle(
+                          color: MyTheme.primaryText(context),
+                          fontSize: 12,
+                          height: 1.2,
+                          fontWeight: FontWeight.w600,
                         ),
-                        if (widget.has_discount ?? false) ...[
-                          const SizedBox(height: 2),
+                      ),
+                      const Spacer(),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
                           Text(
-                            widget.stroked_price ?? "",
+                            widget.main_price ?? "",
                             style: TextStyle(
-                              decoration: TextDecoration.lineThrough,
-                              color: MyTheme.secondaryText(context).withOpacity(0.6),
-                              fontSize: 10,
-                              fontWeight: FontWeight.w500,
+                              color: MyTheme.primary(context),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -0.5,
                             ),
                           ),
+                          if (widget.has_discount ?? false) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              widget.stroked_price ?? "",
+                              style: TextStyle(
+                                decoration: TextDecoration.lineThrough,
+                                color: MyTheme.secondaryText(context).withOpacity(0.6),
+                                fontSize: 10,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
                         ],
-                      ],
-                    ),
-                  ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],

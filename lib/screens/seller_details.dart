@@ -44,9 +44,7 @@ class _SellerDetailsState extends State<SellerDetails> with SingleTickerProvider
   void initState() {
     _tabController = TabController(length: 3, vsync: this);
     _tabController.addListener(() {
-      if (!_tabController.indexIsChanging) {
-        setState(() {});
-      }
+      setState(() {});
     });
     fetchAll();
     super.initState();
@@ -120,6 +118,25 @@ class _SellerDetailsState extends State<SellerDetails> with SingleTickerProvider
     setState(() {});
   }
 
+  String? get _bannerImage {
+    if (_shopDetails == null) return null;
+    if (_shopDetails.banner != null && _shopDetails.banner.toString().isNotEmpty) {
+      return _shopDetails.banner;
+    }
+    if (_carouselImageList.isNotEmpty && _carouselImageList[0] != null) {
+      return _carouselImageList[0];
+    }
+    return null;
+  }
+
+  String? get _logoImage {
+    if (_shopDetails == null) return null;
+    if (_shopDetails.logo != null && _shopDetails.logo.toString().isNotEmpty) {
+      return _shopDetails.logo;
+    }
+    return null;
+  }
+
   Future<void> _onPageRefresh() async {
     reset();
     fetchAll();
@@ -152,9 +169,9 @@ class _SellerDetailsState extends State<SellerDetails> with SingleTickerProvider
                     fit: StackFit.expand,
                     children: [
                       // Banner Background
-                      _shopDetails != null && _carouselImageList.isNotEmpty && PathHelper.getImageUrl(_carouselImageList[0]) != null
+                      _bannerImage != null && PathHelper.getImageUrl(_bannerImage) != null
                           ? CachedNetworkImage(
-                              imageUrl: PathHelper.getImageUrl(_carouselImageList[0])!,
+                              imageUrl: PathHelper.getImageUrl(_bannerImage)!,
                               fit: BoxFit.cover,
                               errorWidget: (c, u, e) => Container(decoration: const BoxDecoration(gradient: MyTheme.heroGradient)),
                             )
@@ -195,9 +212,9 @@ class _SellerDetailsState extends State<SellerDetails> with SingleTickerProvider
                                   ),
                                   child: ClipRRect(
                                     borderRadius: BorderRadius.circular(14),
-                                    child: _shopDetails != null && PathHelper.getImageUrl(_shopDetails.logo) != null
+                                    child: _logoImage != null && PathHelper.getImageUrl(_logoImage) != null
                                         ? CachedNetworkImage(
-                                            imageUrl: PathHelper.getImageUrl(_shopDetails.logo)!,
+                                            imageUrl: PathHelper.getImageUrl(_logoImage)!,
                                             fit: BoxFit.cover,
                                           )
                                         : ShimmerHelper().buildBasicShimmer(),
