@@ -404,7 +404,6 @@ class _FilterState extends State<Filter> {
     return Directionality(
       textDirection: app_language_rtl.$ ? TextDirection.rtl : TextDirection.ltr,
       child: Scaffold(
-        endDrawer: buildFilterDrawer(),
         key: _scaffoldKey,
         backgroundColor: MyTheme.background(context),
         body: Stack(clipBehavior: Clip.none, children: [
@@ -471,60 +470,115 @@ class _FilterState extends State<Filter> {
     );
   }
 
-  Row buildBottomAppBar(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceAround,
+  Widget buildBottomAppBar(BuildContext context) {
+    final int activeCount = _selectedCategories.length + _selectedBrands.length +
+        (_minPriceController.text.isNotEmpty || _maxPriceController.text.isNotEmpty ? 1 : 0);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        _filterTabItem(
-          context,
-          child: DropdownButton<WhichFilter>(
-            isExpanded: true,
-            isDense: true,
-            padding: EdgeInsets.zero,
-            icon: Icon(Icons.expand_more, color: MyTheme.secondaryText(context), size: 16),
-            hint: Text(
-              AppLocalizations.of(context)!.filter_screen_products,
-              style: TextStyle(color: MyTheme.primaryText(context), fontSize: 13),
-            ),
-            underline: const SizedBox(),
-            value: _selectedFilter,
-            items: _dropdownWhichFilterItems,
-            onChanged: (WhichFilter? selectedFilter) {
-              if (selectedFilter != null) {
-                setState(() => _selectedFilter = selectedFilter);
-                _onWhichFilterChange();
-              }
-            },
+        // ── Pill type tabs ───────────────────────────────────────────────
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+          child: Row(
+            children: _which_filter_list.map((f) {
+              final active = _selectedFilter.option_key == f.option_key;
+              return GestureDetector(
+                onTap: () {
+                  setState(() => _selectedFilter = _dropdownWhichFilterItems
+                      .firstWhere((d) => d.value!.option_key == f.option_key).value!);
+                  _onWhichFilterChange();
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 220),
+                  margin: const EdgeInsets.only(right: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+                  decoration: BoxDecoration(
+                    gradient: active ? LinearGradient(colors: [MyTheme.market_red, MyTheme.secondary_color]) : null,
+                    color: active ? null : MyTheme.surface(context),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: active ? Colors.transparent : MyTheme.border(context)),
+                    boxShadow: active ? [BoxShadow(color: MyTheme.market_red.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 3))] : [],
+                  ),
+                  child: Text(f.name,
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
+                        color: active ? Colors.white : MyTheme.secondaryText(context))),
+                ),
+              );
+            }).toList(),
           ),
         ),
-        _filterTabItem(
-          context,
-          onTap: () {
-            _selectedFilter.option_key == "product"
-                ? _scaffoldKey.currentState?.openEndDrawer()
-                : ToastComponent.showDialog(AppLocalizations.of(context)!.filter_screen_sort_warning, context);
-          },
+        // ── Filter + Sort action row ─────────────────────────────────────
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.filter_alt_outlined, size: 14, color: MyTheme.primaryText(context)),
-              const SizedBox(width: 4),
-              Text(AppLocalizations.of(context)!.filter_screen_filter,
-                  style: TextStyle(color: MyTheme.primaryText(context), fontSize: 13, fontWeight: FontWeight.w500)),
-            ],
-          ),
-        ),
-        _filterTabItem(
-          context,
-          onTap: () {
-            _selectedFilter.option_key == "product" ? _showSortDialog() : ToastComponent.showDialog(AppLocalizations.of(context)!.filter_screen_filter_warning, context);
-          },
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.swap_vert, size: 14, color: MyTheme.primaryText(context)),
-              const SizedBox(width: 4),
-              Text("Sort", style: TextStyle(color: MyTheme.primaryText(context), fontSize: 13, fontWeight: FontWeight.w500)),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () {
+                    if (_selectedFilter.option_key == 'product') {
+                      _showAdvancedFilterSheet();
+                    } else {
+                      ToastComponent.showDialog(AppLocalizations.of(context)!.filter_screen_sort_warning, context);
+                    }
+                  },
+                  child: Container(
+                    height: 36,
+                    margin: const EdgeInsets.only(right: 6),
+                    decoration: BoxDecoration(
+                      color: MyTheme.surface(context),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: activeCount > 0 ? MyTheme.golden : MyTheme.border(context)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.filter_alt_outlined, size: 14, color: activeCount > 0 ? MyTheme.golden : MyTheme.primaryText(context)),
+                        const SizedBox(width: 5),
+                        Text(AppLocalizations.of(context)!.filter_screen_filter,
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
+                                color: activeCount > 0 ? MyTheme.golden : MyTheme.primaryText(context))),
+                        if (activeCount > 0) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                            decoration: BoxDecoration(color: MyTheme.golden, borderRadius: BorderRadius.circular(10)),
+                            child: Text('$activeCount', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () {
+                    if (_selectedFilter.option_key == 'product') {
+                      _showSortSheet();
+                    } else {
+                      ToastComponent.showDialog(AppLocalizations.of(context)!.filter_screen_filter_warning, context);
+                    }
+                  },
+                  child: Container(
+                    height: 36,
+                    margin: const EdgeInsets.only(left: 6),
+                    decoration: BoxDecoration(
+                      color: MyTheme.surface(context),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: _selectedSort.isNotEmpty ? MyTheme.golden : MyTheme.border(context)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.swap_vert, size: 14, color: _selectedSort.isNotEmpty ? MyTheme.golden : MyTheme.primaryText(context)),
+                        const SizedBox(width: 5),
+                        Text('Sort', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
+                            color: _selectedSort.isNotEmpty ? MyTheme.golden : MyTheme.primaryText(context))),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
         ),
@@ -549,49 +603,278 @@ class _FilterState extends State<Filter> {
     );
   }
 
-  void _showSortDialog() {
-    showDialog(
+  // ── Sort bottom sheet ──────────────────────────────────────────────────
+  void _showSortSheet() {
+    final options = [
+      ("", AppLocalizations.of(context)!.filter_screen_default),
+      ("price_high_to_low", AppLocalizations.of(context)!.filter_screen_price_high_to_low),
+      ("price_low_to_high", AppLocalizations.of(context)!.filter_screen_price_low_to_high),
+      ("new_arrival", AppLocalizations.of(context)!.filter_screen_price_new_arrival),
+      ("popularity", AppLocalizations.of(context)!.filter_screen_popularity),
+      ("top_rated", AppLocalizations.of(context)!.filter_screen_top_rated),
+    ];
+    showModalBottomSheet(
       context: context,
-      builder: (_) => Directionality(
-        textDirection: app_language_rtl.$ ? TextDirection.rtl : TextDirection.ltr,
-        child: AlertDialog(
-          backgroundColor: MyTheme.surface(context),
-          title: Text(AppLocalizations.of(context)!.filter_screen_sort_products_by, style: TextStyle(color: MyTheme.primaryText(context), fontSize: 16, fontWeight: FontWeight.bold)),
-          contentPadding: const EdgeInsets.symmetric(vertical: 8),
-          content: Column(
+      backgroundColor: MyTheme.surface(context),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, setSheetState) => Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+          child: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _sortRadioTile("", AppLocalizations.of(context)!.filter_screen_default),
-              _sortRadioTile("price_high_to_low", AppLocalizations.of(context)!.filter_screen_price_high_to_low),
-              _sortRadioTile("price_low_to_high", AppLocalizations.of(context)!.filter_screen_price_low_to_high),
-              _sortRadioTile("new_arrival", AppLocalizations.of(context)!.filter_screen_price_new_arrival),
-              _sortRadioTile("popularity", AppLocalizations.of(context)!.filter_screen_popularity),
-              _sortRadioTile("top_rated", AppLocalizations.of(context)!.filter_screen_top_rated),
+              Center(child: Container(width: 36, height: 4, decoration: BoxDecoration(color: MyTheme.border(context), borderRadius: BorderRadius.circular(2)))),
+              const SizedBox(height: 16),
+              Text(AppLocalizations.of(context)!.filter_screen_sort_products_by,
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: MyTheme.primaryText(context))),
+              const SizedBox(height: 12),
+              ...options.map((o) {
+                final selected = _selectedSort == o.$1;
+                return GestureDetector(
+                  onTap: () {
+                    setState(() => _selectedSort = o.$1);
+                    _onSortChange();
+                    Navigator.pop(context);
+                  },
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+                    decoration: BoxDecoration(
+                      color: selected ? MyTheme.golden.withOpacity(0.1) : MyTheme.background(context),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: selected ? MyTheme.golden : MyTheme.border(context)),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(child: Text(o.$2, style: TextStyle(fontSize: 13, fontWeight: selected ? FontWeight.w700 : FontWeight.w400, color: selected ? MyTheme.golden : MyTheme.primaryText(context)))),
+                        if (selected) Icon(Icons.check_circle_rounded, color: MyTheme.golden, size: 18),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
             ],
           ),
-          actions: [
-            TextButton(
-              child: Text(AppLocalizations.of(context)!.common_close_in_all_capital, style: TextStyle(color: MyTheme.golden)),
-              onPressed: () => Navigator.pop(context),
-            ),
-          ],
         ),
       ),
     );
   }
 
-  Widget _sortRadioTile(String value, String title) {
-    return RadioListTile<String>(
-      dense: true,
-      value: value,
-      groupValue: _selectedSort,
-      activeColor: MyTheme.golden,
-      title: Text(title, style: TextStyle(color: MyTheme.primaryText(context), fontSize: 14)),
-      onChanged: (v) {
-        setState(() => _selectedSort = v ?? "");
-        _onSortChange();
-        Navigator.pop(context);
-      },
+  // ── Advanced filter bottom sheet ───────────────────────────────────────
+  double _priceRangeMin = 0;
+  double _priceRangeMax = 500000;
+  final double _priceRangeAbsMax = 500000;
+
+  void _showAdvancedFilterSheet() {
+    // Sync current values in
+    if (_minPriceController.text.isNotEmpty) {
+      _priceRangeMin = double.tryParse(_minPriceController.text) ?? 0;
+    }
+    if (_maxPriceController.text.isNotEmpty) {
+      _priceRangeMax = double.tryParse(_maxPriceController.text) ?? _priceRangeAbsMax;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: MyTheme.surface(context),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, setSheet) => DraggableScrollableSheet(
+          initialChildSize: 0.75,
+          minChildSize: 0.5,
+          maxChildSize: 0.95,
+          expand: false,
+          builder: (_, controller) => Column(
+            children: [
+              // Handle + header
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                child: Column(
+                  children: [
+                    Center(child: Container(width: 36, height: 4, decoration: BoxDecoration(color: MyTheme.border(context), borderRadius: BorderRadius.circular(2)))),
+                    const SizedBox(height: 14),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Advanced Filter', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: MyTheme.primaryText(context))),
+                        GestureDetector(
+                          onTap: () {
+                            setSheet(() {
+                              _priceRangeMin = 0;
+                              _priceRangeMax = _priceRangeAbsMax;
+                              _minPriceController.clear();
+                              _maxPriceController.clear();
+                            });
+                            setState(() {
+                              _selectedCategories.clear();
+                              _selectedBrands.clear();
+                            });
+                          },
+                          child: Text('CLEAR ALL', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: MyTheme.market_red)),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Divider(color: MyTheme.border(context)),
+                  ],
+                ),
+              ),
+              // Scrollable body
+              Expanded(
+                child: ListView(
+                  controller: controller,
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+                  children: [
+                    // ── Price Range ──────────────────────────────────────
+                    Text('Price Range', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: MyTheme.primaryText(context))),
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(color: MyTheme.background(context), borderRadius: BorderRadius.circular(8), border: Border.all(color: MyTheme.border(context))),
+                          child: Text('₦${_priceRangeMin.toStringAsFixed(0)}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: MyTheme.primaryText(context))),
+                        ),
+                        Text('—', style: TextStyle(color: MyTheme.secondaryText(context))),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(color: MyTheme.background(context), borderRadius: BorderRadius.circular(8), border: Border.all(color: MyTheme.border(context))),
+                          child: Text(_priceRangeMax >= _priceRangeAbsMax ? 'Any' : '₦${_priceRangeMax.toStringAsFixed(0)}',
+                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: MyTheme.primaryText(context))),
+                        ),
+                      ],
+                    ),
+                    SliderTheme(
+                      data: SliderThemeData(
+                        activeTrackColor: MyTheme.golden,
+                        inactiveTrackColor: MyTheme.border(context),
+                        thumbColor: MyTheme.golden,
+                        overlayColor: MyTheme.golden.withOpacity(0.15),
+                        rangeThumbShape: const RoundRangeSliderThumbShape(enabledThumbRadius: 10),
+                        trackHeight: 4,
+                      ),
+                      child: RangeSlider(
+                        min: 0,
+                        max: _priceRangeAbsMax,
+                        values: RangeValues(_priceRangeMin, _priceRangeMax),
+                        onChanged: (v) {
+                          setSheet(() {
+                            _priceRangeMin = v.start;
+                            _priceRangeMax = v.end;
+                            _minPriceController.text = v.start > 0 ? v.start.toStringAsFixed(0) : '';
+                            _maxPriceController.text = v.end < _priceRangeAbsMax ? v.end.toStringAsFixed(0) : '';
+                          });
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Divider(color: MyTheme.border(context)),
+                    const SizedBox(height: 12),
+                    // ── Categories ───────────────────────────────────────
+                    Text('Categories', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: MyTheme.primaryText(context))),
+                    const SizedBox(height: 10),
+                    _filterCategoryList.isEmpty
+                        ? Text('No categories available', style: TextStyle(color: MyTheme.secondaryText(context), fontSize: 12))
+                        : Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: _filterCategoryList.map<Widget>((cat) {
+                              final selected = _selectedCategories.contains(cat.id);
+                              return GestureDetector(
+                                onTap: () => setSheet(() {
+                                  setState(() {
+                                    if (selected) {
+                                      _selectedCategories.remove(cat.id);
+                                    } else {
+                                      _selectedCategories.clear();
+                                      _selectedCategories.add(cat.id);
+                                    }
+                                  });
+                                }),
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 180),
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: selected ? MyTheme.golden.withOpacity(0.12) : MyTheme.background(context),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(color: selected ? MyTheme.golden : MyTheme.border(context)),
+                                  ),
+                                  child: Text(cat.name, style: TextStyle(fontSize: 12, fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
+                                      color: selected ? MyTheme.golden : MyTheme.primaryText(context))),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                    const SizedBox(height: 16),
+                    Divider(color: MyTheme.border(context)),
+                    const SizedBox(height: 12),
+                    // ── Brands ───────────────────────────────────────────
+                    Text('Brands', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: MyTheme.primaryText(context))),
+                    const SizedBox(height: 10),
+                    _filterBrandList.isEmpty
+                        ? Text('No brands available', style: TextStyle(color: MyTheme.secondaryText(context), fontSize: 12))
+                        : Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: _filterBrandList.map<Widget>((brand) {
+                              final selected = _selectedBrands.contains(brand.id);
+                              return GestureDetector(
+                                onTap: () => setSheet(() {
+                                  setState(() {
+                                    if (selected) {
+                                      _selectedBrands.remove(brand.id);
+                                    } else {
+                                      _selectedBrands.add(brand.id);
+                                    }
+                                  });
+                                }),
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 180),
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: selected ? MyTheme.golden.withOpacity(0.12) : MyTheme.background(context),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(color: selected ? MyTheme.golden : MyTheme.border(context)),
+                                  ),
+                                  child: Text(brand.name, style: TextStyle(fontSize: 12, fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
+                                      color: selected ? MyTheme.golden : MyTheme.primaryText(context))),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                    const SizedBox(height: 80),
+                  ],
+                ),
+              ),
+              // ── Apply CTA ────────────────────────────────────────────
+              Container(
+                color: MyTheme.surface(context),
+                padding: EdgeInsets.fromLTRB(20, 12, 20, MediaQuery.of(context).padding.bottom + 12),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(colors: [MyTheme.market_red, MyTheme.secondary_color]),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: TextButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _applyProductFilter();
+                      },
+                      child: const Text('APPLY FILTERS', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 14, letterSpacing: 0.8)),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -684,7 +967,8 @@ class _FilterState extends State<Filter> {
         ]);
   }
 
-  Widget buildFilterDrawer() {
+  // buildFilterDrawer removed — replaced by _showAdvancedFilterSheet()
+  Widget _removedFilterDrawer() {
     return Directionality(
       textDirection: app_language_rtl.$ ? TextDirection.rtl : TextDirection.ltr,
       child: Drawer(
@@ -1171,7 +1455,7 @@ class _FilterState extends State<Filter> {
                     crossAxisCount: 2,
                     crossAxisSpacing: 10,
                     mainAxisSpacing: 10,
-                    childAspectRatio: 1),
+                    childAspectRatio: 0.75),
                 padding: EdgeInsets.all(8),
                 physics: NeverScrollableScrollPhysics(),
                 shrinkWrap: true,

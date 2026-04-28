@@ -150,6 +150,50 @@ class MedusaAuthService {
     }
   }
 
+  /// Update current customer profile.
+  static Future<AuthResult> updateProfile({
+    String? firstName,
+    String? lastName,
+    String? email,
+    String? phone,
+    String? password,
+  }) async {
+    try {
+      final headers = await getAuthBearerHeaders();
+      final body = {
+        if (firstName != null) 'first_name': firstName.trim(),
+        if (lastName != null) 'last_name': lastName.trim(),
+        if (email != null) 'email': email.trim().toLowerCase(),
+        if (phone != null) 'phone': phone.replaceAll(RegExp(r'\D'), ''),
+        if (password != null && password.isNotEmpty) 'password': password,
+      };
+
+      final response = await medusaClient.post(
+        Uri.parse('$_baseUrl/store/customers/me'),
+        headers: headers,
+        body: jsonEncode(body),
+      );
+      _guardJson(response);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        return AuthResult(
+          success: true,
+          message: 'Profile updated successfully',
+          customer: data['customer'],
+        );
+      } else {
+        final data = _safeJsonDecode(response.body);
+        return AuthResult(
+          success: false,
+          message: data?['message'] ?? 'Update failed',
+        );
+      }
+    } catch (e) {
+      return AuthResult(success: false, message: 'Connection error');
+    }
+  }
+
   // ═══════════════════════════════════════════════════════════════════════
   //  Session / Profile
   // ═══════════════════════════════════════════════════════════════════════

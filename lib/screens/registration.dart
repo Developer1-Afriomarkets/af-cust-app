@@ -21,12 +21,15 @@ class Registration extends StatefulWidget {
 }
 
 class _RegistrationState extends State<Registration> {
-  String _register_by = "email"; //phone or email
-  String initialCountry = 'US';
-  PhoneNumber phoneCode = PhoneNumber(isoCode: 'US', dialCode: "+1");
+  String _register_by = "email";
+  String initialCountry = 'NG';
+  PhoneNumber phoneCode = PhoneNumber(isoCode: 'NG', dialCode: "+234");
 
   String _phone = "";
   bool _isLoading = false;
+  bool _obscurePassword = true;
+  bool _obscureConfirm = true;
+  bool _acceptedTerms = false;
 
   //controllers
   TextEditingController _nameController = TextEditingController();
@@ -369,19 +372,21 @@ class _RegistrationState extends State<Registration> {
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
                               Container(
-                                height: 36,
+                                height: 48,
                                 child: TextField(
                                   controller: _passwordController,
                                   autofocus: false,
-                                  obscureText: true,
+                                  obscureText: _obscurePassword,
                                   enableSuggestions: false,
                                   autocorrect: false,
-                                  style: TextStyle(
-                                      color: MyTheme.primaryText(context)),
-                                  decoration:
-                                      InputDecorations.buildInputDecoration_1(
-                                          context,
-                                          hint_text: "• • • • • • • •"),
+                                  style: TextStyle(color: MyTheme.primaryText(context)),
+                                  decoration: InputDecorations.buildInputDecoration_1(context, hint_text: "• • • • • • • •").copyWith(
+                                    suffixIcon: IconButton(
+                                      icon: Icon(_obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                                          size: 18, color: MyTheme.secondaryText(context)),
+                                      onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                                    ),
+                                  ),
                                 ),
                               ),
                               Text(
@@ -407,19 +412,56 @@ class _RegistrationState extends State<Registration> {
                         Padding(
                           padding: const EdgeInsets.only(bottom: 8.0),
                           child: Container(
-                            height: 36,
+                            height: 48,
                             child: TextField(
                               controller: _passwordConfirmController,
                               autofocus: false,
-                              obscureText: true,
+                              obscureText: _obscureConfirm,
                               enableSuggestions: false,
                               autocorrect: false,
-                              style: TextStyle(
-                                  color: MyTheme.primaryText(context)),
-                              decoration:
-                                  InputDecorations.buildInputDecoration_1(
-                                      context,
-                                      hint_text: "• • • • • • • •"),
+                              style: TextStyle(color: MyTheme.primaryText(context)),
+                              decoration: InputDecorations.buildInputDecoration_1(context, hint_text: "• • • • • • • •").copyWith(
+                                suffixIcon: IconButton(
+                                  icon: Icon(_obscureConfirm ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                                      size: 18, color: MyTheme.secondaryText(context)),
+                                  onPressed: () => setState(() => _obscureConfirm = !_obscureConfirm),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        // ── Terms & Privacy
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 4.0),
+                          child: GestureDetector(
+                            onTap: () => setState(() => _acceptedTerms = !_acceptedTerms),
+                            child: Row(
+                              children: [
+                                AnimatedContainer(
+                                  duration: const Duration(milliseconds: 180),
+                                  width: 20, height: 20,
+                                  decoration: BoxDecoration(
+                                    color: _acceptedTerms ? MyTheme.golden : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(5),
+                                    border: Border.all(color: _acceptedTerms ? MyTheme.golden : MyTheme.secondaryText(context)),
+                                  ),
+                                  child: _acceptedTerms ? const Icon(Icons.check, size: 13, color: Colors.white) : null,
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text.rich(
+                                    TextSpan(
+                                      style: TextStyle(color: MyTheme.secondaryText(context), fontSize: 11),
+                                      children: [
+                                        const TextSpan(text: 'I agree to the '),
+                                        TextSpan(text: 'Terms of Service', style: TextStyle(color: MyTheme.golden, fontWeight: FontWeight.w700, decoration: TextDecoration.underline)),
+                                        const TextSpan(text: ' and '),
+                                        TextSpan(text: 'Privacy Policy', style: TextStyle(color: MyTheme.golden, fontWeight: FontWeight.w700, decoration: TextDecoration.underline)),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
@@ -436,17 +478,17 @@ class _RegistrationState extends State<Registration> {
                                     borderRadius: BorderRadius.all(
                                         Radius.circular(12.0))),
                               ),
-                              child: Text(
-                                AppLocalizations.of(context)!
-                                    .registration_screen_register_sign_up,
-                                style: TextStyle(
-                                    color: MyTheme.isDark(context)
-                                        ? const Color(0xFF1A1400)
-                                        : Colors.white,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w700),
-                              ),
-                              onPressed: () {
+                              child: _isLoading
+                                  ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                                  : Text(
+                                      AppLocalizations.of(context)!.registration_screen_register_sign_up,
+                                      style: TextStyle(color: MyTheme.isDark(context) ? const Color(0xFF1A1400) : Colors.white, fontSize: 14, fontWeight: FontWeight.w700),
+                                    ),
+                              onPressed: _isLoading ? null : () {
+                                if (!_acceptedTerms) {
+                                  ToastComponent.showDialog('Please accept the Terms of Service and Privacy Policy', context);
+                                  return;
+                                }
                                 onPressSignUp();
                               },
                             ),

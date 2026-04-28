@@ -20,8 +20,12 @@ class ExplorerRepository {
       final response = await request;
       
       final List<StateModel> states = [];
+      if (response == null) return states;
+      
       for (var row in response) {
-        states.add(StateModel.fromJson(row));
+        if (row != null) {
+          states.add(StateModel.fromJson(row));
+        }
       }
       return states;
     } catch (e) {
@@ -44,8 +48,12 @@ class ExplorerRepository {
       final response = await request;
       
       final List<MarketModel> markets = [];
+      if (response == null) return markets;
+
       for (var row in response) {
-        markets.add(MarketModel.fromJson(row));
+        if (row != null) {
+          markets.add(MarketModel.fromJson(row));
+        }
       }
       return markets;
     } catch (e) {
@@ -64,8 +72,12 @@ class ExplorerRepository {
       final response = await request.limit(10);
       
       final List<MarketModel> markets = [];
+      if (response == null) return markets;
+
       for (var row in response) {
-        markets.add(MarketModel.fromJson(row));
+        if (row != null) {
+          markets.add(MarketModel.fromJson(row));
+        }
       }
       return markets;
     } catch (e) {
@@ -87,12 +99,16 @@ class ExplorerRepository {
       final response = await request.limit(limit);
 
       final List<Shop> shops = [];
+      if (response == null) return shops;
+
       for (var row in response) {
-        shops.add(Shop(
-           id: row['id']?.toString(),
-           name: row['name'] ?? row['store_name'] ?? '',
-           logo: row['logo'] ?? '',
-        ));
+        if (row != null) {
+          shops.add(Shop(
+            id: row['id']?.toString(),
+            name: row['name'] ?? row['store_name'] ?? '',
+            logo: row['logo'] ?? '',
+          ));
+        }
       }
       return shops;
     } catch (e) {
@@ -119,13 +135,17 @@ class ExplorerRepository {
       final response = await request;
 
       final List<Shop> shops = [];
+      if (response == null) return shops;
+
       for (var row in response) {
-        // Handle ID mappings explicitly as Supabase migrations might carry raw string types or numeric mappings.
-        shops.add(Shop(
-           id: row['id']?.toString(),
-           name: row['name'] ?? row['store_name'] ?? '',
-           logo: row['logo'] ?? '',
-        ));
+        if (row != null) {
+          // Handle ID mappings explicitly as Supabase migrations might carry raw string types or numeric mappings.
+          shops.add(Shop(
+            id: row['id']?.toString(),
+            name: row['name'] ?? row['store_name'] ?? '',
+            logo: row['logo'] ?? '',
+          ));
+        }
       }
       return shops;
     } catch (e) {
@@ -134,13 +154,34 @@ class ExplorerRepository {
     }
   }
 
-  Future<ProductMiniResponse> getProductsByContext(ExplorerContext context, {String query = '', int page = 1, String sort_key = ''}) async {
+  Future<ProductMiniResponse> getProductsByContext(
+    ExplorerContext context, {
+    String query = '', 
+    int page = 1, 
+    String sort_key = '',
+    double? minPrice,
+    double? maxPrice,
+    String? categoryId,
+    List<String>? brandIds,
+  }) async {
     try {
       final productRepo = ProductRepository();
       if (context.isAtStoreLevel) {
-        return await productRepo.getShopProducts(id: context.selectedStore?.id ?? '0', page: page, name: query);
+        return await productRepo.getShopProducts(
+          id: context.selectedStore?.id ?? '0', 
+          page: page, 
+          name: query,
+        );
       }
-      return await productRepo.getFilteredProducts(name: query, page: page, sort_key: sort_key);
+      return await productRepo.getFilteredProducts(
+        name: query, 
+        page: page, 
+        sort_key: sort_key,
+        min_price: minPrice,
+        max_price: maxPrice,
+        category_id: categoryId,
+        brand_ids: brandIds,
+      );
     } catch (e) {
       debugPrint("Error fetching products: $e");
       return ProductMiniResponse(products: [], success: false, status: 0);

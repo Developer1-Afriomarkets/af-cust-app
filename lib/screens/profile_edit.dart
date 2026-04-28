@@ -13,6 +13,8 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:afriomarkets_cust_app/helpers/file_helper.dart';
 import 'package:afriomarkets_cust_app/l10n/app_localizations.dart';
+import 'package:afriomarkets_cust_app/services/medusa_auth_service.dart';
+import 'package:afriomarkets_cust_app/helpers/auth_helper.dart';
 
 class ProfileEdit extends StatefulWidget {
   @override
@@ -22,10 +24,14 @@ class ProfileEdit extends StatefulWidget {
 class _ProfileEditState extends State<ProfileEdit> {
   ScrollController _mainScrollController = ScrollController();
 
-  TextEditingController _nameController =
-      TextEditingController(text: "${user_name.$}");
+  TextEditingController _firstNameController = TextEditingController();
+  TextEditingController _lastNameController = TextEditingController();
+  TextEditingController _phoneController = TextEditingController();
   TextEditingController _passwordController = TextEditingController();
   TextEditingController _passwordConfirmController = TextEditingController();
+
+  bool _isLoading = false;
+  bool _isInitialLoading = true;
 
   //for image uploading
   final ImagePicker _picker = ImagePicker();
@@ -92,63 +98,66 @@ class _ProfileEditState extends State<ProfileEdit> {
     }
   }
 
-  Future<void> _onPageRefresh() async {}
+  @override
+  void initState() {
+    super.initState();
+    _fetchInitialData();
+  }
+
+  _fetchInitialData() async {
+    final result = await MedusaAuthService.getCustomerProfile();
+    if (result.success && result.customer != null) {
+      final c = result.customer!;
+      _firstNameController.text = c['first_name'] ?? '';
+      _lastNameController.text = c['last_name'] ?? '';
+      _phoneController.text = c['phone'] ?? '';
+    }
+    setState(() => _isInitialLoading = false);
+  }
+
+  Future<void> _onPageRefresh() async {
+    await _fetchInitialData();
+  }
 
   onPressUpdate() async {
-    var name = _nameController.text.toString();
-    var password = _passwordController.text.toString();
-    var password_confirm = _passwordConfirmController.text.toString();
+    var firstName = _firstNameController.text.trim();
+    var lastName = _lastNameController.text.trim();
+    var phone = _phoneController.text.trim();
+    var password = _passwordController.text.trim();
+    var password_confirm = _passwordConfirmController.text.trim();
 
-    var change_password = password != "" ||
-        password_confirm !=
-            ""; // if both fields are empty we will not change user's password
+    var change_password = password.isNotEmpty;
 
-    if (name == "") {
-      ToastComponent.showDialog(
-          AppLocalizations.of(context)!.profile_edit_screen_name_warning,
-          context);
-      return;
-    }
-    if (change_password && password == "") {
-      ToastComponent.showDialog(
-          AppLocalizations.of(context)!.profile_edit_screen_password_warning,
-          context);
-      return;
-    }
-    if (change_password && password_confirm == "") {
-      ToastComponent.showDialog(
-          AppLocalizations.of(context)!
-              .profile_edit_screen_password_confirm_warning,
-          context);
+    if (firstName.isEmpty) {
+      ToastComponent.showDialog("First name is required", context);
       return;
     }
     if (change_password && password.length < 6) {
-      ToastComponent.showDialog(
-          AppLocalizations.of(context)!
-              .password_otp_screen_password_length_warning,
-          context);
+      ToastComponent.showDialog("Password must be at least 6 characters", context);
       return;
     }
     if (change_password && password != password_confirm) {
-      ToastComponent.showDialog(
-          AppLocalizations.of(context)!
-              .profile_edit_screen_password_match_warning,
-          context);
+      ToastComponent.showDialog("Passwords do not match", context);
       return;
     }
 
-    var profileUpdateResponse =
-        await ProfileRepository().getProfileUpdateResponse(
-      name,
-      change_password ? password : "",
+    setState(() => _isLoading = true);
+
+    final result = await MedusaAuthService.updateProfile(
+      firstName: firstName,
+      lastName: lastName,
+      phone: phone,
+      password: change_password ? password : null,
     );
 
-    if (profileUpdateResponse.result == false) {
-      ToastComponent.showDialog(profileUpdateResponse.message ?? "", context);
-    } else {
-      ToastComponent.showDialog(profileUpdateResponse.message ?? "", context);
+    setState(() => _isLoading = false);
 
-      user_name.$ = name;
+    if (!result.success) {
+      ToastComponent.showDialog(result.message ?? "Update failed", context);
+    } else {
+      ToastComponent.showDialog("Profile updated successfully", context);
+      // Sync local state
+      AuthHelper().setUserDataFromMedusa(result);
       setState(() {});
     }
   }
@@ -195,6 +204,8 @@ class _ProfileEditState extends State<ProfileEdit> {
                 "Please login to see this",
             style: TextStyle(color: MyTheme.font_grey),
           )));
+    } else if (_isInitialLoading) {
+      return const Center(child: CircularProgressIndicator());
     } else {
       return RefreshIndicator(
         color: MyTheme.accent_color,
@@ -213,6 +224,7 @@ class _ProfileEditState extends State<ProfileEdit> {
                   padding: const EdgeInsets.symmetric(horizontal: 16.0),
                   child: Divider(
                     height: 24,
+                    color: MyTheme.border(context),
                   ),
                 ),
                 buildProfileForm(context)
@@ -305,22 +317,64 @@ class _ProfileEditState extends State<ProfileEdit> {
             Padding(
               padding: const EdgeInsets.only(bottom: 4.0),
               child: Text(
-                AppLocalizations.of(context)?.profile_edit_screen_name ??
-                    "Name",
+                "First Name",
                 style: TextStyle(
                     color: MyTheme.accent_color, fontWeight: FontWeight.w600),
               ),
             ),
             Padding(
-              padding: const EdgeInsets.only(bottom: 8.0),
+              padding: const EdgeInsets.only(bottom: 12.0),
               child: Container(
                 height: 48,
                 child: TextField(
-                  controller: _nameController,
+                  controller: _firstNameController,
                   autofocus: false,
                   style: TextStyle(color: MyTheme.primaryText(context)),
                   decoration: InputDecorations.buildInputDecoration_1(context,
-                      hint_text: "John Doe"),
+                      hint_text: "John"),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4.0),
+              child: Text(
+                "Last Name",
+                style: TextStyle(
+                    color: MyTheme.accent_color, fontWeight: FontWeight.w600),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12.0),
+              child: Container(
+                height: 48,
+                child: TextField(
+                  controller: _lastNameController,
+                  autofocus: false,
+                  style: TextStyle(color: MyTheme.primaryText(context)),
+                  decoration: InputDecorations.buildInputDecoration_1(context,
+                      hint_text: "Doe"),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4.0),
+              child: Text(
+                "Phone Number",
+                style: TextStyle(
+                    color: MyTheme.accent_color, fontWeight: FontWeight.w600),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12.0),
+              child: Container(
+                height: 48,
+                child: TextField(
+                  controller: _phoneController,
+                  autofocus: false,
+                  keyboardType: TextInputType.phone,
+                  style: TextStyle(color: MyTheme.primaryText(context)),
+                  decoration: InputDecorations.buildInputDecoration_1(context,
+                      hint_text: "+234..."),
                 ),
               ),
             ),
@@ -391,36 +445,31 @@ class _ProfileEditState extends State<ProfileEdit> {
             ),
             Row(
               children: [
-                Spacer(),
+                const Spacer(),
                 Padding(
                   padding: const EdgeInsets.only(top: 16.0),
                   child: Container(
-                    width: 120,
-                    height: 36,
-                    decoration: BoxDecoration(
-                        border:
-                            Border.all(color: MyTheme.textfield_grey, width: 1),
-                        borderRadius:
-                            const BorderRadius.all(Radius.circular(8.0))),
+                    width: 140,
+                    height: 45,
                     child: TextButton(
                       style: TextButton.styleFrom(
-                        minimumSize:
-                            Size(MediaQuery.of(context).size.width, 50),
-                        backgroundColor: MyTheme.accent_color,
+                        backgroundColor: MyTheme.golden,
                         shape: RoundedRectangleBorder(
                             borderRadius:
-                                const BorderRadius.all(Radius.circular(8.0))),
+                                const BorderRadius.all(Radius.circular(12.0))),
                       ),
-                      child: Text(
-                        AppLocalizations.of(context)
-                                ?.profile_edit_screen_btn_update_profile ??
-                            "Update Profile",
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700),
-                      ),
-                      onPressed: () {
+                      child: _isLoading 
+                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                        : Text(
+                          AppLocalizations.of(context)
+                                  ?.profile_edit_screen_btn_update_profile ??
+                              "Update Profile",
+                          style: TextStyle(
+                              color: MyTheme.isDark(context) ? const Color(0xFF1A1400) : Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700),
+                        ),
+                      onPressed: _isLoading ? null : () {
                         onPressUpdate();
                       },
                     ),

@@ -63,16 +63,34 @@ class ProductRepository {
   }
 
   Future<ProductMiniResponse> getFilteredProducts({
-    name = "",
-    sort_key = "",
-    page = 1,
-    brands = "",
-    categories = "",
-    min = "",
-    max = "",
+    String name = "",
+    String sort_key = "",
+    int page = 1,
+    dynamic brands = "", // can be CSV or List
+    dynamic categories = "", // can be CSV or String
+    dynamic min = "",
+    dynamic max = "",
+    String? category_id,
+    List<String>? brand_ids,
+    double? min_price,
+    double? max_price,
   }) async {
-    final q = name?.toString().isNotEmpty == true ? name.toString() : null;
-    return MedusaService.getProductsMapped(page: page, q: q);
+    final q = name.isNotEmpty ? name : null;
+    
+    // Support both legacy positional-ish params and new explicit params
+    final catId = category_id ?? (categories.toString().isNotEmpty ? categories.toString() : null);
+    final bIds = brand_ids ?? (brands.toString().isNotEmpty ? brands.toString().split(',') : null);
+    final minP = min_price ?? double.tryParse(min.toString());
+    final maxP = max_price ?? double.tryParse(max.toString());
+
+    return MedusaService.getProductsMapped(
+      page: page, 
+      q: q,
+      categoryId: catId,
+      brandIds: bIds,
+      minPrice: minP,
+      maxPrice: maxP,
+    );
   }
 
   // ─── Product Details ─────────────────────────────────────────────────────

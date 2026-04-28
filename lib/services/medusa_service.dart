@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:afriomarkets_cust_app/data_model/product_mini_response.dart';
 import 'package:afriomarkets_cust_app/data_model/product_details_response.dart';
 import 'package:afriomarkets_cust_app/data_model/category_response.dart';
+import 'package:afriomarkets_cust_app/data_model/brand_response.dart' hide Meta;
 import 'package:afriomarkets_cust_app/data_model/slider_response.dart';
 import 'package:afriomarkets_cust_app/data_model/variant_response.dart';
 import 'package:afriomarkets_cust_app/helpers/safe_api_helper.dart';
@@ -58,9 +59,20 @@ class MedusaService {
     int page = 1,
     int limit = 20,
     String? categoryId,
+    List<String>? brandIds,
+    double? minPrice,
+    double? maxPrice,
     String? q,
   }) async {
-    return _getProductsInternal(page: page, limit: limit, categoryId: categoryId, q: q);
+    return _getProductsInternal(
+      page: page, 
+      limit: limit, 
+      categoryId: categoryId, 
+      brandIds: brandIds,
+      minPrice: minPrice,
+      maxPrice: maxPrice,
+      q: q,
+    );
   }
 
   /// Fetches specific products by their Medusa string IDs.
@@ -73,6 +85,9 @@ class MedusaService {
     int page = 1,
     int limit = 20,
     String? categoryId,
+    List<String>? brandIds,
+    double? minPrice,
+    double? maxPrice,
     String? q,
     List<String>? ids,
   }) async {
@@ -88,16 +103,25 @@ class MedusaService {
       if (categoryId != null && categoryId.isNotEmpty) queryParams['category_id[]'] = categoryId;
       if (q != null && q.isNotEmpty) queryParams['q'] = q;
 
+      // Medusa v1 filtering extensions
+      if (minPrice != null) queryParams['min_price'] = minPrice.toInt().toString();
+      if (maxPrice != null) queryParams['max_price'] = maxPrice.toInt().toString();
+
       var uri = Uri.parse('$_baseUrl/store/products').replace(queryParameters: queryParams);
       
-      // Handle multiple IDs by appending manually to avoid Uri.replace encoding issues with repeated keys
+      // Handle multiple IDs and Brand IDs (collections) manually
+      String url = uri.toString();
       if (ids != null && ids.isNotEmpty) {
-        String url = uri.toString();
         for (var id in ids) {
           url += '&id[]=$id';
         }
-        uri = Uri.parse(url);
       }
+      if (brandIds != null && brandIds.isNotEmpty) {
+        for (var bid in brandIds) {
+          url += '&collection_id[]=$bid';
+        }
+      }
+      uri = Uri.parse(url);
 
       final response = await http.get(uri, headers: _headers);
       _assertJson(response);
@@ -422,6 +446,38 @@ class MedusaService {
         status: 200,
       );
     }, CategoryResponse(categories: [], success: false, status: 0));
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Collections (Brands) — mapped to legacy BrandResponse
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  static Future<BrandResponse> getBrandsMapped({
+    String? q,
+  }) async {
+    return safeApiCall(() async {
+      final uri = Uri.parse('$_baseUrl/store/collections');
+      final response = await http.get(uri, headers: _headers);
+      _assertJson(response);
+      
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      final List<dynamic> rawCols = body['collections'] ?? [];
+
+      final brands = rawCols.map((c) {
+        return Brands(
+          id: _stableId(c['id']),
+          name: c['title'] ?? '',
+          logo: '', // Medusa collections don't have logos by default, can use metadata if present
+          links: BrandsLinks(products: ''),
+        );
+      }).toList();
+
+      return BrandResponse(
+        brands: brands,
+        success: true,
+        status: 200,
+      );
+    }, BrandResponse(brands: [], success: false, status: 0));
   }
 
   // ═══════════════════════════════════════════════════════════════════════════

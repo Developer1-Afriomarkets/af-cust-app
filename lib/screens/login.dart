@@ -29,11 +29,12 @@ class Login extends StatefulWidget {
 }
 
 class _LoginState extends State<Login> {
-  String _login_by = "email"; //phone or email
+  String _login_by = "email";
   String initialCountry = 'US';
   PhoneNumber phoneCode = PhoneNumber(isoCode: 'US', dialCode: "+1");
   String _phone = "";
   bool _isLoading = false;
+  bool _obscurePassword = true;
 
   //controllers
   TextEditingController _phoneNumberController = TextEditingController();
@@ -381,19 +382,21 @@ class _LoginState extends State<Login> {
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
                               Container(
-                                height: 36,
+                                height: 48,
                                 child: TextField(
                                   controller: _passwordController,
                                   autofocus: false,
-                                  obscureText: true,
+                                  obscureText: _obscurePassword,
                                   enableSuggestions: false,
                                   autocorrect: false,
-                                  style: TextStyle(
-                                      color: MyTheme.primaryText(context)),
-                                  decoration:
-                                      InputDecorations.buildInputDecoration_1(
-                                          context,
-                                          hint_text: "• • • • • • • •"),
+                                  style: TextStyle(color: MyTheme.primaryText(context)),
+                                  decoration: InputDecorations.buildInputDecoration_1(context, hint_text: "• • • • • • • •").copyWith(
+                                    suffixIcon: IconButton(
+                                      icon: Icon(_obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                                          size: 18, color: MyTheme.secondaryText(context)),
+                                      onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                                    ),
+                                  ),
                                 ),
                               ),
                               GestureDetector(
@@ -429,19 +432,13 @@ class _LoginState extends State<Login> {
                                     borderRadius: BorderRadius.all(
                                         Radius.circular(12.0))),
                               ),
-                              child: Text(
-                                AppLocalizations.of(context)!
-                                    .login_screen_log_in,
-                                style: TextStyle(
-                                    color: MyTheme.isDark(context)
-                                        ? const Color(0xFF1A1400)
-                                        : Colors.white,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w700),
-                              ),
-                              onPressed: () {
-                                onPressedLogin();
-                              },
+                              child: _isLoading
+                                  ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                                  : Text(
+                                      AppLocalizations.of(context)!.login_screen_log_in,
+                                      style: TextStyle(color: MyTheme.isDark(context) ? const Color(0xFF1A1400) : Colors.white, fontSize: 14, fontWeight: FontWeight.w700),
+                                    ),
+                              onPressed: _isLoading ? null : () => onPressedLogin(),
                             ),
                           ),
                         ),

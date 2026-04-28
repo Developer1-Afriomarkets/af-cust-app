@@ -7,6 +7,10 @@ import 'package:afriomarkets_cust_app/ui_elements/market_square_card.dart';
 import 'package:afriomarkets_cust_app/ui_elements/store_card.dart';
 import 'package:afriomarkets_cust_app/ui_elements/product_card.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:afriomarkets_cust_app/repositories/category_repository.dart';
+import 'package:afriomarkets_cust_app/repositories/brand_repository.dart';
+import 'package:afriomarkets_cust_app/data_model/category_response.dart';
+import 'package:afriomarkets_cust_app/data_model/brand_response.dart';
 
 class ExplorerBrowse extends StatefulWidget {
   final ExplorerContext explorerContext;
@@ -25,10 +29,233 @@ class _ExplorerBrowseState extends State<ExplorerBrowse> {
   late String _selectedEntityType;
   String _selectedSort = "";
 
+  // Filter State
+  double _minPrice = 0;
+  double _maxPrice = 1000000;
+  String? _selectedCategoryId;
+  List<String> _selectedBrands = [];
+  int _activeFilterCount = 0;
+
   @override
   void initState() {
     super.initState();
     _selectedEntityType = _getAvailableEntityTypes().first;
+  }
+
+  void _updateFilterCount() {
+    int count = 0;
+    if (_selectedCategoryId != null) count++;
+    if (_selectedBrands.isNotEmpty) count += _selectedBrands.length;
+    if (_minPrice > 0 || _maxPrice < 1000000) count++;
+    setState(() {
+      _activeFilterCount = count;
+    });
+  }
+
+  void _openSortSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          color: MyTheme.surface(context),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text("Sort Products By", 
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: MyTheme.primaryText(context))),
+            const SizedBox(height: 16),
+            _sortOptionTile("Default", ""),
+            _sortOptionTile("Price: Low to High", "price_low_to_high"),
+            _sortOptionTile("Price: High to Low", "price_high_to_low"),
+            _sortOptionTile("Newest Arrivals", "newest"),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _sortOptionTile(String title, String value) {
+    final selected = _selectedSort == value;
+    return ListTile(
+      onTap: () {
+        setState(() => _selectedSort = value);
+        Navigator.pop(context);
+      },
+      contentPadding: EdgeInsets.zero,
+      title: Text(title, 
+          style: TextStyle(
+            color: selected ? MyTheme.accent_color : MyTheme.primaryText(context),
+            fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+          )),
+      trailing: selected ? Icon(Icons.check_circle, color: MyTheme.accent_color) : null,
+    );
+  }
+
+  void _openAdvancedFilter() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.75,
+        maxChildSize: 0.95,
+        minChildSize: 0.5,
+        builder: (context, controller) => StatefulBuilder(
+          builder: (context, setSheetState) {
+            return Container(
+              decoration: BoxDecoration(
+                color: MyTheme.surface(context),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Column(
+                children: [
+                  // Header
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text("Filters", style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: MyTheme.primaryText(context))),
+                        TextButton(
+                          onPressed: () {
+                            setSheetState(() {
+                              _minPrice = 0;
+                              _maxPrice = 1000000;
+                              _selectedCategoryId = null;
+                              _selectedBrands = [];
+                            });
+                          },
+                          child: Text("Clear All", style: TextStyle(color: MyTheme.accent_color, fontWeight: FontWeight.bold)),
+                        )
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: ListView(
+                      controller: controller,
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      children: [
+                        // Price Range
+                        _buildSectionHeader("Price Range"),
+                        const SizedBox(height: 12),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text("₦${_minPrice.toInt()}", style: TextStyle(fontWeight: FontWeight.bold, color: MyTheme.primaryText(context))),
+                            Text("₦${_maxPrice.toInt()}+", style: TextStyle(fontWeight: FontWeight.bold, color: MyTheme.primaryText(context))),
+                          ],
+                        ),
+                        RangeSlider(
+                          values: RangeValues(_minPrice, _maxPrice),
+                          min: 0,
+                          max: 1000000,
+                          activeColor: MyTheme.accent_color,
+                          inactiveColor: MyTheme.border(context),
+                          onChanged: (v) {
+                            setSheetState(() {
+                              _minPrice = v.start;
+                              _maxPrice = v.end;
+                            });
+                          },
+                        ),
+                        
+                        const SizedBox(height: 24),
+                        // Categories
+                        _buildSectionHeader("Categories"),
+                        const SizedBox(height: 12),
+                        FutureBuilder<CategoryResponse>(
+                          future: CategoryRepository().getFilterPageCategories(),
+                          builder: (context, snapshot) {
+                            if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                            return Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: snapshot.data!.categories.map((cat) {
+                                final isSelected = _selectedCategoryId == (cat.id ?? 0).toString();
+                                return ChoiceChip(
+                                  label: Text(cat.name ?? ""),
+                                  selected: isSelected,
+                                  onSelected: (val) {
+                                    setSheetState(() {
+                                      _selectedCategoryId = val ? (cat.id ?? 0).toString() : null;
+                                    });
+                                  },
+                                  selectedColor: MyTheme.accent_color.withOpacity(0.2),
+                                  labelStyle: TextStyle(color: isSelected ? MyTheme.accent_color : MyTheme.primaryText(context)),
+                                );
+                              }).toList(),
+                            );
+                          }
+                        ),
+
+                        const SizedBox(height: 24),
+                        // Brands
+                        _buildSectionHeader("Brands"),
+                        const SizedBox(height: 12),
+                        FutureBuilder<BrandResponse>(
+                          future: BrandRepository().getFilterPageBrands(),
+                          builder: (context, snapshot) {
+                            if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                            return Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: snapshot.data!.brands.map((brand) {
+                                final isSelected = _selectedBrands.contains((brand.id ?? 0).toString());
+                                return FilterChip(
+                                  label: Text(brand.name ?? ""),
+                                  selected: isSelected,
+                                  onSelected: (val) {
+                                    setSheetState(() {
+                                      if (val) {
+                                        _selectedBrands.add((brand.id ?? 0).toString());
+                                      } else {
+                                        _selectedBrands.remove((brand.id ?? 0).toString());
+                                      }
+                                    });
+                                  },
+                                  selectedColor: MyTheme.accent_color.withOpacity(0.2),
+                                  labelStyle: TextStyle(color: isSelected ? MyTheme.accent_color : MyTheme.primaryText(context)),
+                                );
+                              }).toList(),
+                            );
+                          }
+                        ),
+                        const SizedBox(height: 40),
+                      ],
+                    ),
+                  ),
+                  // Apply Button
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    child: ElevatedButton(
+                      onPressed: () {
+                        _updateFilterCount();
+                        Navigator.pop(context);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: MyTheme.accent_color,
+                        minimumSize: const Size(double.infinity, 50),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: const Text("Apply Filters", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    ),
+                  )
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title) {
+    return Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: MyTheme.primaryText(context)));
   }
 
   @override
@@ -159,7 +386,15 @@ class _ExplorerBrowseState extends State<ExplorerBrowse> {
 
   Widget _buildProductResults() {
     return FutureBuilder(
-      future: _repository.getProductsByContext(widget.explorerContext, query: _searchQuery, sort_key: _selectedSort),
+      future: _repository.getProductsByContext(
+        widget.explorerContext, 
+        query: _searchQuery, 
+        sort_key: _selectedSort,
+        minPrice: _minPrice,
+        maxPrice: _maxPrice,
+        categoryId: _selectedCategoryId,
+        brandIds: _selectedBrands,
+      ),
       builder: (context, AsyncSnapshot<dynamic> snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) return _buildLoadingGrid();
         if (!snapshot.hasData || snapshot.data!.products.isEmpty) {
@@ -239,6 +474,12 @@ class _ExplorerBrowseState extends State<ExplorerBrowse> {
                     _selectedEntityType = selectedType;
                     _searchQuery = ""; // Reset search upon category switch
                     _searchController.clear();
+                    // Reset filters when switching entity type to be safe
+                    _minPrice = 0;
+                    _maxPrice = 1000000;
+                    _selectedCategoryId = null;
+                    _selectedBrands = [];
+                    _activeFilterCount = 0;
                   });
                 }
               },
@@ -248,8 +489,11 @@ class _ExplorerBrowseState extends State<ExplorerBrowse> {
           // 2. Filter Button
           GestureDetector(
             onTap: () {
-               // Placeholder for future advanced filter logic
-               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Advanced filters coming soon.")));
+              if (_selectedEntityType != "Products") {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Advanced filtering is currently only available for products.")));
+                return;
+              }
+              _openAdvancedFilter();
             },
             child: Container(
               decoration: BoxDecoration(
@@ -259,18 +503,40 @@ class _ExplorerBrowseState extends State<ExplorerBrowse> {
                       horizontal: BorderSide(color: MyTheme.border(context), width: 1))),
               height: 36,
               width: MediaQuery.of(context).size.width * .33,
-              child: Center(
-                  child: Row(
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.filter_alt_outlined, size: 13, color: MyTheme.primaryText(context)),
+                      Icon(Icons.filter_alt_outlined, size: 13, color: _activeFilterCount > 0 ? MyTheme.accent_color : MyTheme.primaryText(context)),
                       const SizedBox(width: 4),
                       Text(
                         "Filter",
-                        style: TextStyle(color: MyTheme.primaryText(context), fontSize: 13),
+                        style: TextStyle(
+                          color: _activeFilterCount > 0 ? MyTheme.accent_color : MyTheme.primaryText(context), 
+                          fontSize: 13,
+                          fontWeight: _activeFilterCount > 0 ? FontWeight.bold : FontWeight.normal
+                        ),
                       ),
                     ],
                   ),
+                  if (_activeFilterCount > 0)
+                    Positioned(
+                      right: 12,
+                      top: 4,
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(color: MyTheme.golden, shape: BoxShape.circle),
+                        constraints: const BoxConstraints(minWidth: 14, minHeight: 14),
+                        child: Text(
+                          "$_activeFilterCount",
+                          style: const TextStyle(color: Colors.black, fontSize: 8, fontWeight: FontWeight.bold),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
           ),
@@ -282,63 +548,7 @@ class _ExplorerBrowseState extends State<ExplorerBrowse> {
                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Sorting is currently only available for products.")));
                  return;
               }
-              showDialog(
-                context: context,
-                builder: (_) => AlertDialog(
-                  backgroundColor: MyTheme.surface(context),
-                  contentPadding: const EdgeInsets.only(top: 16.0, left: 2.0, right: 2.0, bottom: 2.0),
-                  content: StatefulBuilder(
-                    builder: (BuildContext context, StateSetter setModalState) {
-                      return Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                            child: Text("Sort Products By", style: TextStyle(fontWeight: FontWeight.bold, color: MyTheme.primaryText(context))),
-                          ),
-                          RadioListTile<String>(
-                            dense: true,
-                            value: "",
-                            groupValue: _selectedSort,
-                            activeColor: MyTheme.accent_color,
-                            title: Text("Default", style: TextStyle(color: MyTheme.primaryText(context))),
-                            onChanged: (value) {
-                              setState(() { _selectedSort = value ?? ""; });
-                              setModalState(() { _selectedSort = value ?? ""; });
-                              Navigator.pop(context);
-                            },
-                          ),
-                          RadioListTile<String>(
-                            dense: true,
-                            value: "price_high_to_low",
-                            groupValue: _selectedSort,
-                            activeColor: MyTheme.accent_color,
-                            title: Text("Price high to low", style: TextStyle(color: MyTheme.primaryText(context))),
-                            onChanged: (value) {
-                              setState(() { _selectedSort = value ?? ""; });
-                              setModalState(() { _selectedSort = value ?? ""; });
-                              Navigator.pop(context);
-                            },
-                          ),
-                          RadioListTile<String>(
-                            dense: true,
-                            value: "price_low_to_high",
-                            groupValue: _selectedSort,
-                            activeColor: MyTheme.accent_color,
-                            title: Text("Price low to high", style: TextStyle(color: MyTheme.primaryText(context))),
-                            onChanged: (value) {
-                              setState(() { _selectedSort = value ?? ""; });
-                              setModalState(() { _selectedSort = value ?? ""; });
-                              Navigator.pop(context);
-                            },
-                          ),
-                        ],
-                      );
-                    }
-                  ),
-                )
-              );
+              _openSortSheet();
             },
             child: Container(
               decoration: BoxDecoration(
@@ -352,11 +562,15 @@ class _ExplorerBrowseState extends State<ExplorerBrowse> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.swap_vert, size: 13, color: MyTheme.primaryText(context)),
+                      Icon(Icons.swap_vert, size: 13, color: _selectedSort.isNotEmpty ? MyTheme.accent_color : MyTheme.primaryText(context)),
                       const SizedBox(width: 4),
                       Text(
                         "Sort",
-                        style: TextStyle(color: MyTheme.primaryText(context), fontSize: 13),
+                        style: TextStyle(
+                          color: _selectedSort.isNotEmpty ? MyTheme.accent_color : MyTheme.primaryText(context), 
+                          fontSize: 13,
+                          fontWeight: _selectedSort.isNotEmpty ? FontWeight.bold : FontWeight.normal
+                        ),
                       ),
                     ],
                   ),

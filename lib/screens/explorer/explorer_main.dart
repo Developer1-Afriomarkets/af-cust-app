@@ -4,7 +4,7 @@ import 'package:afriomarkets_cust_app/my_theme.dart';
 import 'package:afriomarkets_cust_app/data_model/explorer_context.dart';
 import 'package:afriomarkets_cust_app/screens/explorer/explorer_overview.dart';
 import 'package:afriomarkets_cust_app/screens/explorer/explorer_browse.dart';
-import 'package:afriomarkets_cust_app/screens/explorer/explorer_more.dart';
+import 'package:afriomarkets_cust_app/screens/explorer/explorer_more.dart'; // Contains ExplorerDiscover
 import 'package:afriomarkets_cust_app/services/region_service.dart';
 import 'package:afriomarkets_cust_app/repositories/explorer_repository.dart';
 import 'package:afriomarkets_cust_app/data_model/state_model.dart';
@@ -244,7 +244,10 @@ class _ExplorerMainState extends State<ExplorerMain> {
         return ExplorerBrowse(explorerContext: _currentContext);
       case 2:
       default:
-        return ExplorerMore(explorerContext: _currentContext);
+        return ExplorerDiscover(
+          explorerContext: _currentContext,
+          onContextChanged: _onContextChanged,
+        );
     }
   }
 
@@ -277,9 +280,9 @@ class _ExplorerMainState extends State<ExplorerMain> {
             label: "Browse",
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.more_horiz_outlined),
-            activeIcon: Icon(Icons.more_horiz),
-            label: "More",
+            icon: Icon(Icons.public_outlined),
+            activeIcon: Icon(Icons.public),
+            label: "Discover",
           ),
         ],
       ),
