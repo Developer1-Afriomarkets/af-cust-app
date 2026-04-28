@@ -63,6 +63,7 @@ class MedusaService {
     double? minPrice,
     double? maxPrice,
     String? q,
+    List<String>? productIds,
   }) async {
     return _getProductsInternal(
       page: page, 
@@ -72,6 +73,7 @@ class MedusaService {
       minPrice: minPrice,
       maxPrice: maxPrice,
       q: q,
+      ids: productIds,
     );
   }
 
@@ -103,10 +105,9 @@ class MedusaService {
       if (categoryId != null && categoryId.isNotEmpty) queryParams['category_id[]'] = categoryId;
       if (q != null && q.isNotEmpty) queryParams['q'] = q;
 
-      // Medusa v1 filtering extensions
-      if (minPrice != null) queryParams['min_price'] = minPrice.toInt().toString();
-      if (maxPrice != null) queryParams['max_price'] = maxPrice.toInt().toString();
-
+      // NOTE: Standard Medusa v1 /store/products does not natively support min_price/max_price filters 
+      // as top-level query parameters. They are removed to prevent 400 errors.
+      
       var uri = Uri.parse('$_baseUrl/store/products').replace(queryParameters: queryParams);
       
       // Handle multiple IDs and Brand IDs (collections) manually

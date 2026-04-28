@@ -74,6 +74,8 @@ class ProductRepository {
     List<String>? brand_ids,
     double? min_price,
     double? max_price,
+    String? store_id,
+    String? market_id,
   }) async {
     final q = name.isNotEmpty ? name : null;
     
@@ -83,6 +85,36 @@ class ProductRepository {
     final minP = min_price ?? double.tryParse(min.toString());
     final maxP = max_price ?? double.tryParse(max.toString());
 
+    List<String>? productIds;
+
+    // CONTEXTUAL FILTERING: Narrow down by Store or Market using Supabase bridge
+    if (store_id != null || market_id != null) {
+      try {
+        final supabase = SupabaseService.client;
+        var storeIds = <String>[];
+
+        if (store_id != null) {
+          storeIds.add(store_id);
+        } else if (market_id != null) {
+          // Find all stores in this market
+          final storeRes = await supabase.from('store').select('id').or('metadata->>market_id.eq.$market_id,metadata->market->>id.eq.$market_id');
+          storeIds = (storeRes as List).map((s) => s['id'].toString()).toList();
+        }
+
+        if (storeIds.isNotEmpty) {
+          final prodRes = await supabase.from('product').select('id').filter('store_id', 'in', storeIds);
+          productIds = (prodRes as List).map((p) => p['id'].toString()).toList();
+        }
+        
+        // If we found NO products for the given context, return early
+        if (productIds == null || productIds.isEmpty) {
+          return ProductMiniResponse(products: [], success: true, status: 200);
+        }
+      } catch (e) {
+        debugPrint("Supabase context filtering error: $e");
+      }
+    }
+
     return MedusaService.getProductsMapped(
       page: page, 
       q: q,
@@ -90,6 +122,7 @@ class ProductRepository {
       brandIds: bIds,
       minPrice: minP,
       maxPrice: maxP,
+      productIds: productIds,
     );
   }
 

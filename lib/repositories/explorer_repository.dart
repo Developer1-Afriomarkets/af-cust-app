@@ -118,17 +118,18 @@ class ExplorerRepository {
   }
 
   /// Fetch Stores directly from Supabase, bridging Store profiles into native Market environments.
-  Future<List<Shop>> getStoresByMarket(String marketId, {int page = 1, String query = ''}) async {
+  Future<List<Shop>> getStoresByMarket(String marketId, {int page = 1, String query = '', String? stateId}) async {
     try {
-      // Supporting both metadata->>market_id and metadata->market->>id for robustness
       var request = _supabase.from('store').select('*');
       
       if (marketId != 'global') {
-        // Supporting both metadata->>market_id and metadata->market->>id for robustness
         request = request.or('metadata->>market_id.eq.$marketId,metadata->market->>id.eq.$marketId');
+      } else if (stateId != null && stateId.isNotEmpty) {
+        request = request.or('metadata->>state_id.eq.$stateId,metadata->state->>id.eq.$stateId');
       }
           
       if (query.isNotEmpty) {
+        // Search across 'name' column (store_name was confirmed missing in backend)
         request = request.ilike('name', '%$query%');
       }
       
@@ -166,13 +167,9 @@ class ExplorerRepository {
   }) async {
     try {
       final productRepo = ProductRepository();
-      if (context.isAtStoreLevel) {
-        return await productRepo.getShopProducts(
-          id: context.selectedStore?.id ?? '0', 
-          page: page, 
-          name: query,
-        );
-      }
+      final storeId = context.selectedStore?.id;
+      final marketId = context.selectedMarket?.id;
+
       return await productRepo.getFilteredProducts(
         name: query, 
         page: page, 
@@ -181,6 +178,8 @@ class ExplorerRepository {
         max_price: maxPrice,
         category_id: categoryId,
         brand_ids: brandIds,
+        store_id: storeId,
+        market_id: marketId,
       );
     } catch (e) {
       debugPrint("Error fetching products: $e");

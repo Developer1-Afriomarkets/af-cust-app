@@ -363,8 +363,9 @@ class _ExplorerBrowseState extends State<ExplorerBrowse> {
 
   Widget _buildStoreResults() {
     final marketId = widget.explorerContext.selectedMarket?.id ?? 'global';
+    final stateId = widget.explorerContext.selectedState?.id;
     return FutureBuilder(
-      future: _repository.getStoresByMarket(marketId, query: _searchQuery),
+      future: _repository.getStoresByMarket(marketId, query: _searchQuery, stateId: stateId),
       builder: (context, AsyncSnapshot<List<dynamic>> snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) return _buildLoadingGrid();
         if (!snapshot.hasData || snapshot.data!.isEmpty) return Center(child: Text("No stores found."));
@@ -488,11 +489,8 @@ class _ExplorerBrowseState extends State<ExplorerBrowse> {
           
           // 2. Filter Button
           GestureDetector(
+            behavior: HitTestBehavior.opaque,
             onTap: () {
-              if (_selectedEntityType != "Products") {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Advanced filtering is currently only available for products.")));
-                return;
-              }
               _openAdvancedFilter();
             },
             child: Container(
@@ -543,11 +541,8 @@ class _ExplorerBrowseState extends State<ExplorerBrowse> {
           
           // 3. Sort Button
           GestureDetector(
+            behavior: HitTestBehavior.opaque,
             onTap: () {
-              if (_selectedEntityType != "Products") {
-                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Sorting is currently only available for products.")));
-                 return;
-              }
               _openSortSheet();
             },
             child: Container(
@@ -616,6 +611,11 @@ class _ExplorerBrowseState extends State<ExplorerBrowse> {
           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
           child: TextField(
             controller: _searchController,
+            onChanged: (value) {
+              setState(() {
+                _searchQuery = value;
+              });
+            },
             onSubmitted: (value) {
               setState(() {
                 _searchQuery = value;
