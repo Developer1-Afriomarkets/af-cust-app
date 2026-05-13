@@ -779,8 +779,8 @@ class _ExplorerOverviewState extends State<ExplorerOverview> {
   //  PHASE 7 - CONTEXTUAL DATA VISUALIZATION
   // ═══════════════════════════════════════════════════════════════════════════
 
-  // ignore: unused_element
   // Kept for reuse outside ExplorerOverview (e.g. embedded hero in other screens).
+  // ignore: unused_element
   Widget _buildContextualHeroBanner() {
     final isDark = MyTheme.isDark(context);
     final accentColor = MyTheme.primary(context);

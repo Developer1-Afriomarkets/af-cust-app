@@ -29,7 +29,6 @@ class _ExplorerMainState extends State<ExplorerMain> {
   late ExplorerContext _currentContext;
   int _currentIndex = 0;
 
-  // ── Blended AppBar state ─────────────────────────────────────────────────
   // Shared scroll controller: ExplorerOverview feeds scroll offset back here
   // so the outer AppBar can fade between transparent (over hero) and surface.
   final ScrollController _overviewScrollController = ScrollController();
@@ -225,7 +224,7 @@ class _ExplorerMainState extends State<ExplorerMain> {
                          Widget? leading;
                          
                          if (item is MedusaRegion) {
-                           name = item.name ?? "";
+                           name = item.name; // non-nullable
                            leading = Text(item.countries.isNotEmpty ? _flagEmoji(item.countries.first.iso2) : '🌍', style: const TextStyle(fontSize: 20));
                          } else if (item is StateModel) {
                            name = item.stateName;
