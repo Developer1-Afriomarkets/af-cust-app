@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 import 'package:afriomarkets_cust_app/my_theme.dart';
 import 'package:afriomarkets_cust_app/data_model/explorer_context.dart';
 import 'package:afriomarkets_cust_app/screens/explorer/explorer_overview.dart';
 import 'package:afriomarkets_cust_app/screens/explorer/explorer_browse.dart';
 import 'package:afriomarkets_cust_app/screens/explorer/explorer_more.dart'; // Contains ExplorerDiscover
+import 'package:afriomarkets_cust_app/screens/explorer/explorer_immersive_view.dart';
 import 'package:afriomarkets_cust_app/services/region_service.dart';
 import 'package:afriomarkets_cust_app/repositories/explorer_repository.dart';
 import 'package:afriomarkets_cust_app/data_model/state_model.dart';
@@ -27,15 +29,127 @@ class _ExplorerMainState extends State<ExplorerMain> {
   late ExplorerContext _currentContext;
   int _currentIndex = 0;
 
+  // ── Blended AppBar state ─────────────────────────────────────────────────
+  // Shared scroll controller: ExplorerOverview feeds scroll offset back here
+  // so the outer AppBar can fade between transparent (over hero) and surface.
+  final ScrollController _overviewScrollController = ScrollController();
+  double _appBarOpacity = 0.0;
+
   @override
   void initState() {
     super.initState();
     _currentContext = widget.initialContext ?? ExplorerContext();
+    _overviewScrollController.addListener(_onOverviewScrolled);
+  }
+
+  void _onOverviewScrolled() {
+    // Hero is ~46% of screen height. Fade starts at 80px, completes at 220px.
+    final ratio = ((_overviewScrollController.offset - 80.0) / 140.0).clamp(0.0, 1.0);
+    if ((ratio - _appBarOpacity).abs() > 0.01) {
+      setState(() => _appBarOpacity = ratio);
+    }
+  }
+
+  /// Launches the fullscreen immersive explorer from the Overview hero.
+  /// Shows a loading overlay immediately so the user has instant feedback
+  /// while states/markets are fetched asynchronously.
+  void _launchImmersiveView() async {
+    if (!mounted) return;
+
+    // ── Show immediate loading overlay ───────────────────────────────────────
+    // The async fetch can take 0.5–2s. Without this the user sees nothing
+    // and thinks the gesture didn't register.
+    final overlayState = Overlay.of(context);
+    late OverlayEntry loadingOverlay;
+    loadingOverlay = OverlayEntry(
+      builder: (_) => Positioned.fill(
+        child: Material(
+          color: Colors.black.withOpacity(0.75),
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                const SizedBox(height: 14),
+                const Text(
+                  'Preparing Explorer...',
+                  style: TextStyle(color: Colors.white70, fontSize: 14),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    overlayState.insert(loadingOverlay);
+
+    // ── Fetch data ────────────────────────────────────────────────────────────
+    final repo = ExplorerRepository();
+    List<dynamic> items;
+    ExplorerLevel level;
+
+    try {
+      if (_currentContext.isAtStateLevel) {
+        items = await repo.getMarketsByState(_currentContext.selectedState!.id);
+        level = ExplorerLevel.state;
+      } else {
+        items = await repo.getStates();
+        level = ExplorerLevel.region;
+      }
+    } catch (e) {
+      items = [];
+      level = ExplorerLevel.region;
+      debugPrint('[ImmersiveView] fetch error: $e');
+    }
+
+    loadingOverlay.remove();
+    if (!mounted) return;
+
+    if (items.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No locations available to explore right now'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        transitionDuration: const Duration(milliseconds: 450),
+        reverseTransitionDuration: const Duration(milliseconds: 300),
+        pageBuilder: (_, animation, __) {
+          return SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0, 1),
+              end: Offset.zero,
+            ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
+            child: ExplorerImmersiveView(
+              initialContext: _currentContext,
+              onContextChanged: _onContextChanged,
+              items: items,
+              level: level,
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _overviewScrollController.removeListener(_onOverviewScrolled);
+    _overviewScrollController.dispose();
+    super.dispose();
   }
 
   void _onContextChanged(ExplorerContext newContext) {
     setState(() {
       _currentContext = newContext;
+      // Reset AppBar opacity when context changes (new hero imagery)
+      _appBarOpacity = 0.0;
     });
   }
 
@@ -190,15 +304,30 @@ class _ExplorerMainState extends State<ExplorerMain> {
       title = _currentContext.selectedState?.stateName ?? title;
     }
 
+    // On the Overview tab the AppBar floats over the hero image.
+    // It starts fully transparent (icons white) and fades to a surface
+    // background as the user scrolls past the hero.
+    final bool isOverview = _currentIndex == 0;
+    final double bgOpacity = isOverview ? _appBarOpacity : 1.0;
+    final Color iconColor = isOverview && _appBarOpacity < 0.45
+        ? Colors.white
+        : MyTheme.primaryText(context);
+    final Color surfaceBg = MyTheme.surface(context).withOpacity(bgOpacity);
+
     return AppBar(
-      backgroundColor: Colors.transparent,
+      systemOverlayStyle: isOverview && _appBarOpacity < 0.45
+          ? SystemUiOverlayStyle.light
+          : (MyTheme.isDark(context)
+              ? SystemUiOverlayStyle.light
+              : SystemUiOverlayStyle.dark),
+      backgroundColor: surfaceBg,
       centerTitle: true,
-      elevation: 0,
+      elevation: bgOpacity > 0.6 ? 2 : 0,
+      shadowColor: Colors.black.withOpacity(0.12),
       leading: IconButton(
-        icon: Icon(Icons.arrow_back, color: MyTheme.primaryText(context)),
+        icon: Icon(Icons.arrow_back_rounded, color: iconColor),
         onPressed: () {
           if (!_currentContext.isAtRegionLevel) {
-            // Pop context level instead of navigating back completely
             _onContextChanged(_currentContext.pop());
           } else {
             Navigator.of(context).pop();
@@ -215,21 +344,24 @@ class _ExplorerMainState extends State<ExplorerMain> {
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: MyTheme.primaryText(context),
+                color: iconColor,
+                shadows: isOverview && _appBarOpacity < 0.45
+                    ? [const Shadow(color: Colors.black54, blurRadius: 4)]
+                    : null,
               ),
             ),
             const SizedBox(width: 4),
-            Icon(Icons.keyboard_arrow_down, color: MyTheme.primaryText(context), size: 20),
+            Icon(Icons.keyboard_arrow_down_rounded, color: iconColor, size: 20),
           ],
         ),
       ),
-      bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(1.0),
-        child: Container(
-          color: MyTheme.border(context),
-          height: 1.0,
-        ),
-      ),
+      // Bottom divider only appears once the surface background is visible
+      bottom: bgOpacity > 0.5
+          ? PreferredSize(
+              preferredSize: const Size.fromHeight(1.0),
+              child: Container(color: MyTheme.border(context), height: 1.0),
+            )
+          : null,
     );
   }
 
@@ -239,6 +371,10 @@ class _ExplorerMainState extends State<ExplorerMain> {
         return ExplorerOverview(
           explorerContext: _currentContext,
           onContextChanged: _onContextChanged,
+          // Shared scroll controller drives the AppBar opacity blend
+          scrollController: _overviewScrollController,
+          // Called when user overscrolls downward on the hero
+          onImmersiveRequested: _launchImmersiveView,
         );
       case 1:
         return ExplorerBrowse(explorerContext: _currentContext);
@@ -255,6 +391,9 @@ class _ExplorerMainState extends State<ExplorerMain> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.transparent,
+      // Extend body behind AppBar so the hero imagery bleeds under the
+      // transparent AppBar on the Overview tab.
+      extendBodyBehindAppBar: true,
       appBar: _buildAppBar(),
       body: MyTheme.brandBackground(
         context: context,

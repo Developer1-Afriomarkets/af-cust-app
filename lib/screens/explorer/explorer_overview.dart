@@ -18,11 +18,19 @@ import 'package:afriomarkets_cust_app/screens/explorer/blog_story_page.dart';
 class ExplorerOverview extends StatefulWidget {
   final ExplorerContext explorerContext;
   final ValueChanged<ExplorerContext> onContextChanged;
+  /// Shared scroll controller threaded from ExplorerMain so the outer
+  /// AppBar can read offset and blend its background over the hero.
+  final ScrollController? scrollController;
+  /// Called when the user overscrolls downward at the top of the list,
+  /// triggering the fullscreen immersive geo-explorer view.
+  final VoidCallback? onImmersiveRequested;
 
   const ExplorerOverview({
     Key? key,
     required this.explorerContext,
     required this.onContextChanged,
+    this.scrollController,
+    this.onImmersiveRequested,
   }) : super(key: key);
 
   @override
@@ -41,11 +49,42 @@ class _ExplorerOverviewState extends State<ExplorerOverview> {
   // ── New Sliver Hero state ─────────────────────────────────────────────────
   int _heroTabIndex = 0;
   static const List<String> _heroTabLabels = ["Featured", "Markets", "Stores", "Products"];
+  bool _immersiveLaunching = false; // guard against double-fire
 
   @override
   void initState() {
     super.initState();
     _fetchBannersAndCategories();
+
+    // ── Overscroll trigger for immersive view ──────────────────────────────
+    // OverscrollNotification with stretch:true gets absorbed by SliverAppBar.
+    // Listening directly to the shared ScrollController is more reliable:
+    // when the user pulls DOWN past the top (offset goes negative on iOS
+    // BouncingScrollPhysics), we trigger the immersive view.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      widget.scrollController?.addListener(_checkImmersiveOverscroll);
+    });
+  }
+
+  void _checkImmersiveOverscroll() {
+    final ctrl = widget.scrollController;
+    if (ctrl == null || !ctrl.hasClients) return;
+    // On iOS with BouncingScrollPhysics the offset goes negative when the user
+    // pulls down past the top. -30 is a deliberate, perceptible pull.
+    if (ctrl.offset < -30 && !_immersiveLaunching) {
+      _immersiveLaunching = true;
+      widget.onImmersiveRequested?.call();
+      // Reset guard after a delay so subsequent pulls can retrigger
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted) setState(() => _immersiveLaunching = false);
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.scrollController?.removeListener(_checkImmersiveOverscroll);
+    super.dispose();
   }
 
   void _fetchBannersAndCategories() async {
@@ -331,12 +370,14 @@ class _ExplorerOverviewState extends State<ExplorerOverview> {
     return SliverAppBar(
       expandedHeight: expandedHeight,
       pinned: false,
-      stretch: true,
+      // stretch:false is CRITICAL — stretch:true causes SliverAppBar to
+      // absorb the overscroll gesture via StretchMode, which prevents the
+      // ScrollController from seeing a negative offset.
+      stretch: false,
       backgroundColor: Colors.transparent,
       elevation: 0,
       automaticallyImplyLeading: false,
       flexibleSpace: FlexibleSpaceBar(
-        stretchModes: const [StretchMode.zoomBackground],
         background: _buildHeroBackground(
           isDark: isDark,
           heroTitle: heroTitle,
@@ -405,8 +446,51 @@ class _ExplorerOverviewState extends State<ExplorerOverview> {
               ),
             ),
             const Spacer(),
+            // ── Pull-to-explore affordance ──────────────────────────────────
+            // Visible tap target as a reliable fallback alongside the
+            // ScrollController overscroll trigger.
+            Center(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () {
+                  if (!_immersiveLaunching) {
+                    _immersiveLaunching = true;
+                    widget.onImmersiveRequested?.call();
+                    Future.delayed(const Duration(seconds: 2), () {
+                      if (mounted) setState(() => _immersiveLaunching = false);
+                    });
+                  }
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  margin: const EdgeInsets.only(bottom: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.4),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.white.withOpacity(0.25)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white, size: 16),
+                      const SizedBox(width: 5),
+                      Text(
+                        _immersiveLaunching ? 'Loading...' : 'Explore Immersively',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 12, 20),
+              padding: const EdgeInsets.fromLTRB(16, 0, 12, 14),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
@@ -695,6 +779,8 @@ class _ExplorerOverviewState extends State<ExplorerOverview> {
   //  PHASE 7 - CONTEXTUAL DATA VISUALIZATION
   // ═══════════════════════════════════════════════════════════════════════════
 
+  // ignore: unused_element
+  // Kept for reuse outside ExplorerOverview (e.g. embedded hero in other screens).
   Widget _buildContextualHeroBanner() {
     final isDark = MyTheme.isDark(context);
     final accentColor = MyTheme.primary(context);
@@ -1216,11 +1302,26 @@ class _ExplorerOverviewState extends State<ExplorerOverview> {
       return SellerDetails(id: widget.explorerContext.selectedStore!.id ?? 0);
     }
 
-    String entityHeaderTitle = "Explore States";
-    if (widget.explorerContext.isAtMarketLevel) entityHeaderTitle = "Stores in ${widget.explorerContext.selectedMarket?.marketName}";
-    else if (widget.explorerContext.isAtStateLevel) entityHeaderTitle = "Markets in ${widget.explorerContext.selectedState?.stateName}";
 
-    return CustomScrollView(
+    return NotificationListener<ScrollNotification>(
+      onNotification: (notification) {
+        // Fallback: catch OverscrollNotification on Android (ClampingScrollPhysics
+        // doesn't produce negative offsets, but does fire OverscrollNotification).
+        if (notification is OverscrollNotification &&
+            notification.overscroll < 0 &&
+            !_immersiveLaunching &&
+            widget.onImmersiveRequested != null) {
+          _immersiveLaunching = true;
+          widget.onImmersiveRequested!();
+          Future.delayed(const Duration(seconds: 2), () {
+            if (mounted) setState(() => _immersiveLaunching = false);
+          });
+        }
+        return false;
+      },
+      child: CustomScrollView(
+        // Use the shared controller if provided; fall back to a local one.
+        controller: widget.scrollController,
         physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
         slivers: [
           // ── New immersive sliver hero (seller_details pattern) ──────────────
@@ -1269,6 +1370,7 @@ class _ExplorerOverviewState extends State<ExplorerOverview> {
           
           const SliverToBoxAdapter(child: SizedBox(height: 60)), // Bottom padding
         ],
-      );
+      ),   // end CustomScrollView
+    );     // end NotificationListener
   }
 }
