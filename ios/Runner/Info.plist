@@ -45,58 +45,5 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
-
-	<!-- ─── Supabase Auth Deep Link ───────────────────────────────────────── -->
-	<!-- supabase_flutter requires a registered URL scheme on real iOS builds  -->
-	<!-- for auth redirect callbacks. Without this the plugin throws a fatal   -->
-	<!-- exception during initialize() on IPA (non-debug) builds.             -->
-	<key>CFBundleURLTypes</key>
-	<array>
-		<dict>
-			<key>CFBundleTypeRole</key>
-			<string>Editor</string>
-			<key>CFBundleURLName</key>
-			<string>com.afriomarkets.custapp</string>
-			<key>CFBundleURLSchemes</key>
-			<array>
-				<string>com.afriomarkets.custapp</string>
-			</array>
-		</dict>
-	</array>
-
-	<!-- ─── App Transport Security ──────────────────────────────────────── -->
-	<!-- Explicit ATS config prevents silent network failures on IPA builds. -->
-	<!-- NSAllowsArbitraryLoads=false keeps security strict; only the two    -->
-	<!-- Afriomarkets domains are explicitly allowed.                         -->
-	<key>NSAppTransportSecurity</key>
-	<dict>
-		<key>NSAllowsArbitraryLoads</key>
-		<false/>
-		<key>NSExceptionDomains</key>
-		<dict>
-			<key>supabase.co</key>
-			<dict>
-				<key>NSIncludesSubdomains</key>
-				<true/>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key>
-				<false/>
-				<key>NSExceptionMinimumTLSVersion</key>
-				<string>TLSv1.2</string>
-			</dict>
-			<key>afriomarkets.com</key>
-			<dict>
-				<key>NSIncludesSubdomains</key>
-				<true/>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key>
-				<false/>
-				<key>NSExceptionMinimumTLSVersion</key>
-				<string>TLSv1.2</string>
-			</dict>
-		</dict>
-	</dict>
-
-	<!-- Enables Flutter embedded platform views (required by some plugins) -->
-	<key>io.flutter.embedded_views_preview</key>
-	<true/>
 </dict>
 </plist>
